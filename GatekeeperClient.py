@@ -1,0 +1,24 @@
+import requests
+import json
+from Constants import *
+
+class GatekeeperClient:
+    URL = "http://192.168.1.95:5000"
+    #URL = "http://127.0.0.1:8080"
+    CONNECT = "/connect"
+    def connect_to_network(ip_and_ports):
+        data = {'ip':ip_and_ports[0], 'tcp':ip_and_ports[1], 'udp':ip_and_ports[2]}
+        # sending get request and saving the response as response object
+        response = requests.post((GatekeeperClient.URL + GatekeeperClient.CONNECT), json=data)
+        if response:
+            content = json.loads(response.text)
+            if content == Constants.Network.NO_CONNECTION:
+                return None
+            else:
+                potential_connection = (content["ip"], content["tcp"], content["udp"])
+                print("GatekeeperClient Response", potential_connection)
+                print(potential_connection)
+                return potential_connection
+
+    #def randx():
+    #    print(URL)
