@@ -22,10 +22,11 @@ def get_dict_from_addr(addr):
 
 @app.route('/connect', methods=['POST'])
 def connect():
+    print("\n\n")
     print(clients)
     #print(request.json)
     ip_and_ports = get_addr_from_dict(request.json)
-    print(ip_and_ports)
+    #print(ip_and_ports)
     if ip_and_ports and (ip_and_ports not in clients):
         connection_candidate = None
         minimum = math.inf
@@ -38,9 +39,18 @@ def connect():
         resp = connection_response_template
         if connection_candidate:
             resp = get_dict_from_addr(connection_candidate)
-        print(resp)
+        #print(resp)
         return json.dumps(resp), 200
     return "User already exists at {}".format(ip_and_ports), 400
+
+@app.route('/delete', methods=['DELETE'])
+def delete():
+    addr = get_addr_from_dict(request.json)
+    if addr in clients:
+        del clients[addr]
+    print("\n\n")
+    print(clients)
+    return "{} deleted".format(addr), 200
 
 """
 class Connect(Resource):

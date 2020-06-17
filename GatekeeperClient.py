@@ -6,6 +6,7 @@ class GatekeeperClient:
     URL = "http://192.168.1.95:5000"
     #URL = "http://127.0.0.1:8080"
     CONNECT = "/connect"
+    DELETE = "/delete"
     def connect_to_network(ip_and_ports):
         data = {'ip':ip_and_ports[0], 'tcp':ip_and_ports[1], 'udp':ip_and_ports[2]}
         # sending get request and saving the response as response object
@@ -19,6 +20,10 @@ class GatekeeperClient:
                 print("GatekeeperClient Response", potential_connection)
                 print(potential_connection)
                 return potential_connection
+
+    def notify_client_dead(addr):
+        data = {'ip':addr[0], 'tcp':addr[1], 'udp':addr[2]}
+        response = requests.delete((GatekeeperClient.URL + GatekeeperClient.DELETE), json=data)
 
     #def randx():
     #    print(URL)

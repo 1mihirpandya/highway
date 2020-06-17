@@ -1,4 +1,5 @@
 import json
+from Constants import *
 
 
 
@@ -8,24 +9,37 @@ class JSONQueryUDPTemplate:
     "id":"xxxx",
     "type":"query",
     "src":"",
+    "dst":"",
     "query":"",
+    "payload":""
+    }
+    length_without_src_query_payload = len(json.dumps(template))
+
+class JSONResponseUDPTemplate:
+    template = {
+    "id":"xxxx",
+    "type":"response",
+    "src":"",
+    "dst":"",
+    "query":"",
+    "payload":""
     }
     length_without_src_query_payload = len(json.dumps(template))
 
 class JSONHeartbeatUDPTemplate:
     template = {
     "id":"xxxx",
-    "type":"heartbeat",
+    "type":Constants.Network.HEARTBEAT,
     "src":"",
     "query":"",
-    "payload":"",
+    "payload":""
     }
     length_without_src_query_payload = len(json.dumps(template))
 
 class JSONHeartbeatAckTemplate:
     template = {
     "id":"xxxx",
-    "type":"heartbeat_ack",
+    "type":Constants.Network.ACK,
     "src":""
     }
     length_without_src_query_payload = len(json.dumps(template))

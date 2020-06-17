@@ -3,7 +3,9 @@ class Constants:
         DICT_CONNECTION_TEMPLATE = {"ip": None,"tcp": None,"udp": None}
         NO_CONNECTION = {"ip": -1,"tcp": -1,"udp": -1}
         HEARTBEAT = "heartbeat"
-        UDP_ACK = "heartbeat_ack"
+        ACK = "heartbeat_ack"
+        QUERY = "query"
+        RESPONSE = "response"
 
     class Heartbeat:
         FILES = "update_filelist"

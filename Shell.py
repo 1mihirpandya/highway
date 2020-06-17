@@ -13,9 +13,9 @@ def parse_arguments():
 def delegate(input):
     if input.startswith("addfile "):
         filename = input[len("addfile "):]
-        client.files.add(filename)
+        client.files.append(filename)
         print("Current Files:", client.files)
-    elif input.startswith("testconnect"):
+    elif input.startswith("connect"):
         client.connect_to_network()
         print("Current Neighbors:", client.neighbors)
     elif input.startswith("testneighbor "):
@@ -29,6 +29,8 @@ def delegate(input):
         file_heartbeat_th.start()
         file_heartbeat_th = threading.Thread(target=client.heartbeat_neighbors, daemon=True)
         file_heartbeat_th.start()
+        swim_th = threading.Thread(target=client.failure_detector, daemon=True)
+        swim_th.start()
         print("Services running...")
         print("Heartbeat intitiated...")
         print("IP = {}".format(client.ip))
@@ -41,6 +43,11 @@ def delegate(input):
     elif input.startswith("getneighborsfiles"):
         client.get_neighbor_filelist()
         print("Current Files:", client.files)
+    elif input.startswith("showcache"):
+        print("Query Ids: ", client.network_cache.query_ids, "\n")
+        for neighbor in client.network_cache.neighbors:
+            print("Neighbor: {}".format(neighbor))
+            print(client.network_cache.neighbors[neighbor].printable())
 
 if __name__ == "__main__":
     args = parse_arguments()
