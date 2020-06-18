@@ -52,7 +52,9 @@ class NetworkClientCache():
                 ref.last_received = last_received
             if len(neighbors_of_neighbors) > 0:
                 curr_len = len(ref.neighbors)
-                ref.neighbors.extend([tuple(n) for n in neighbors_of_neighbors if n not in list(self.neighbors.keys())])
+                for n in neighbors_of_neighbors:
+                    if tuple(n) != self.get_src_addr():
+                        ref.neighbors.append(tuple(n))
                 ref.neighbors = ref.neighbors[curr_len:]
 
     def get_query_id(self, query=""):

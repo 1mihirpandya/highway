@@ -1,4 +1,5 @@
 from ClientNode import *
+import threading
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -23,7 +24,7 @@ def delegate(input):
         client.neighbors.append((a[0], int(a[1])))
         print("Current Neighbors:", client.neighbors)
     elif input.startswith("start"):
-        listener_th = threading.Thread(target=client.network_client.listen_to_ports, daemon=True)
+        listener_th = threading.Thread(target=client.listen_to_ports, daemon=True)
         listener_th.start()
         file_heartbeat_th = threading.Thread(target=client.heartbeat_filelist, daemon=True)
         file_heartbeat_th.start()
