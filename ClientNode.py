@@ -27,7 +27,6 @@ class ClientNode:
     def connect(self, potential_connections):
         #num_clients = math.inf #answer from gatekeeper
         query = JSONQueryRPCTemplate.template
-        neighbor_count = math.inf
         query["src"] = self.network_client.get_src_addr()
         query["query"] = "get_neighbors"
         while len(potential_connections) > 0: #or TTL/round count?
@@ -35,30 +34,29 @@ class ClientNode:
             if candidate == "|":
                 potential_connections.append("|")
                 continue
-            query["dst"] = candidate[0]
-            query["dstport"] = candidate[1]
-            #print("here",candidate)
+            query["dst"] = candidate
+            #neighbors_of_candidate = candidate.get_neighbors(network_client)
             response = self.network_client.send_rpc(query)
             if len(response["payload"]) < self.connection_load * self.num_clients:
                 if candidate in self.neighbors:
                     break
-                complete = self.add_neighbor(*candidate)
+                complete = self.add_neighbor(candidate)
                 if complete:
                     break
             potential_connections.extend(response["payload"])
         #no open positions, an issue for another time...
 
-    def add_neighbor(self, ip, port, udp_port):
+    def add_neighbor(self, dst):
         query = JSONQueryRPCTemplate.template
         query["src"] = self.network_client.get_src_addr()
         query["query"] = "confirm_neighbor"
-        query["dst"] = ip
-        query["dstport"] = port
+        query["dst"] = dst
         query["payload"] = self.network_client.get_src_addr()
+        #neighbor.confirm_neighbor()
         response = self.network_client.send_rpc(query)
         if response["payload"]["status"] != 0: #for membership, 0 is no, anything else is yes
             self.update_filelist(None, response["payload"]["files"])
-            self.neighbors.append((ip, port, udp_port))
+            self.neighbors.append(dst)
             return True
         return False
 
