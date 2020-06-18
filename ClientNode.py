@@ -1,7 +1,6 @@
 from NetworkClient import *
-from NetworkClientCache import *
-from JSONTemplate import *
 from GatekeeperClient import *
+from Transport import ClientProtocol
 import argparse
 import math
 
@@ -26,72 +25,39 @@ class ClientNode:
 
     def connect(self, potential_connections):
         #num_clients = math.inf #answer from gatekeeper
-        query = JSONQueryRPCTemplate.template
-        query["src"] = self.network_client.get_src_addr()
-        query["query"] = "get_neighbors"
         while len(potential_connections) > 0: #or TTL/round count?
             candidate = potential_connections[0]
             if candidate == "|":
                 potential_connections.append("|")
                 continue
-            query["dst"] = candidate
-            #neighbors_of_candidate = candidate.get_neighbors(network_client)
-            response = self.network_client.send_rpc(query)
-            if len(response["payload"]) < self.connection_load * self.num_clients:
+            candidate_neighbors = ClientProtocol.get_neighbors(candidate, self.network_client)
+            if len(candidate_neighbors) < self.connection_load * self.num_clients:
                 if candidate in self.neighbors:
                     break
                 complete = self.add_neighbor(candidate)
                 if complete:
                     break
-            potential_connections.extend(response["payload"])
+            potential_connections.extend(candidate)
         #no open positions, an issue for another time...
 
-    def add_neighbor(self, dst):
-        query = JSONQueryRPCTemplate.template
-        query["src"] = self.network_client.get_src_addr()
-        query["query"] = "confirm_neighbor"
-        query["dst"] = dst
-        query["payload"] = self.network_client.get_src_addr()
-        #neighbor.confirm_neighbor()
-        response = self.network_client.send_rpc(query)
-        if response["payload"]["status"] != 0: #for membership, 0 is no, anything else is yes
-            self.update_filelist(None, response["payload"]["files"])
-            self.neighbors.append(dst)
+    def add_neighbor(self, potential_neighbor):
+        status, files = ClientProtocol.add_neighbor(potential_neighbor, self.network_client)
+        if status != 0: #for membership, 0 is no, anything else is yes
+            self.update_filelist(None, files)
+            self.neighbors.append(tuple(potential_neighbor))
             return True
         return False
 
-    def confirm_neighbor(self, payload):
+    def confirm_neighbor(self, potential_neighbor):
         #other checks to see if this node can accept another connection.
         #like net traffic? existing connections? available cpu/memory?
-        response = JSONResponseRPCTemplate.template
-        response["src"] = self.network_client.get_src_addr()
-        response["payload"] = {
-        "status": 0,
-        "files": None
-        }
-        if tuple(payload) not in self.neighbors and len(self.neighbors) < self.connection_load * self.num_clients:
-            response = JSONResponseRPCTemplate.template
-            response["src"] = self.network_client.get_src_addr()
-            response["payload"]["status"] = 1
-            response["payload"]["files"] = list(self.neighbors)
-            self.neighbors.append(tuple(payload))
-        return response
+        if tuple(potential_neighbor) not in self.neighbors and len(self.neighbors) <= self.connection_load * self.num_clients:
+            return 1, self.files
+            self.neighbors.append(tuple(potential_neighbor))
+        return 0, None
 
     def get_neighbors(self, payload):
-        response = JSONResponseRPCTemplate.template
-        response["src"] = self.network_client.get_src_addr()
-        response["payload"] = list(self.neighbors)
-        return response
-
-    def get_neighbor_filelist(self):
-        query = JSONQueryRPCTemplate.template
-        query["src"] = self.network_client.get_src_addr()
-        query["query"] = "get_filelist"
-        for neighbor in self.neighbors:
-            query["dst"] = neighbor[0]
-            query["dstport"] = neighbor[1]
-            response = self.network_client.send_rpc(query)
-            self.update_filelist(response["payload"])
+        return self.neighbors
 
     def get_neighbor_status(self, src, neighbor):
         neighbor = tuple(neighbor)
@@ -113,12 +79,6 @@ class ClientNode:
 
     def update_neighbors(self, src, neighbors):
         self.network_cache.update_cache(src, neighbors_of_neighbors=neighbors)
-
-    def get_filelist(self, payload):
-        response = JSONResponseRPCTemplate.template
-        response["src"] = self.network_client.get_src_addr()
-        response["payload"] = self.files
-        return response
 
     def heartbeat_filelist(self):
         self.network_client.heartbeat(Constants.Heartbeat.FILES, self.files, self.neighbors, Constants.Heartbeat.FILES_FREQUENCY)

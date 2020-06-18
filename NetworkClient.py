@@ -1,11 +1,13 @@
 #!/usr/bin/env python
-from scapy.all import *
 from NetworkClientCache import *
 from JSONTemplate import *
+from Transport import ClientDelegate
 import socket
+import struct
 import threading
 import random
 import json
+import sys
 
 class NetworkClient:
 
@@ -30,16 +32,10 @@ class NetworkClient:
                 with conn:
                     print('TCP connected by', addr)
                     payload = self.recv_msg_tcp(conn)
-                    #print(payload)
                     dict_payload = json.loads(payload)
-                    dict_payload["src"] = tuple(dict_payload["src"])
-                    #print(35, dict_payload["src"])
                     self.network_cache.update_cache(dict_payload["src"], last_received=TimeManager.get_formatted_time())
-                    #print(dict_payload)
-                    response = getattr(self.client_node, dict_payload["query"])(dict_payload["payload"])
-                    response = json.dumps(response).encode()
+                    response = ClientDelegate.receive(dict_payload, self.client_node)
                     self.send_msg_tcp(conn, response)
-                    #print(41, dict_payload["src"])
                     self.network_cache.update_cache(dict_payload["src"], last_sent=TimeManager.get_formatted_time(), last_received=TimeManager.get_formatted_time())
                 print("TCP connection closed")
         except KeyboardInterrupt:
@@ -129,25 +125,20 @@ class NetworkClient:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.sendto(query.encode(), dst)
 
-    def send_rpc(self, query):
-        query["id"] = self.network_cache.get_query_id()
-        json_query = json.dumps(query)
-        #print(json_query)
+    def send_rpc(self, query, dst):
+        #query["id"] = self.network_cache.get_query_id()
+        #json_query = json.dumps(query)
         #network_cache.update_cache(neighbor, last_sent=TimeManager.get_formatted_time())
-        payload = self.send_recv_tcp_using_socket(json_query, (query["dst"], query["dstport"]))
-        self.network_cache.query_ids[query["id"]] = None
-        #print(payload)
+        payload = self.send_recv_tcp_using_socket(query, dst)
+        #self.network_cache.query_ids[query["id"]] = None
         return json.loads(payload)
 
     def send_recv_tcp_using_socket(self, query, dst):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #print(dst)
-        #print()
-        #print()
-        s.connect((dst[0], dst[1]))#self.tcp_port))
-        self.send_msg_tcp(s, query.encode())
-        payload = self.recv_msg_tcp(s)
-        s.close()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(self.get_tcp_addr(dst))
+        self.send_msg_tcp(sock, query)
+        payload = self.recv_msg_tcp(sock)
+        sock.close()
         return payload
 
     def send_msg_tcp(self, sock, msg):
