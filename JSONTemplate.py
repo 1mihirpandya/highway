@@ -10,6 +10,7 @@ class JSONQueryUDPTemplate:
     "type":"query",
     "src":"",
     "dst":"",
+    "protocol":"UDP",
     "query":"",
     "payload":""
     }
@@ -21,6 +22,7 @@ class JSONResponseUDPTemplate:
     "type":"response",
     "src":"",
     "dst":"",
+    "protocol":"UDP",
     "query":"",
     "payload":""
     }
@@ -31,6 +33,7 @@ class JSONHeartbeatUDPTemplate:
     "id":"xxxx",
     "type":Constants.Network.HEARTBEAT,
     "src":"",
+    "protocol":"UDP",
     "query":"",
     "payload":""
     }
@@ -40,7 +43,8 @@ class JSONHeartbeatAckTemplate:
     template = {
     "id":"xxxx",
     "type":Constants.Network.ACK,
-    "src":""
+    "src":"",
+    "protocol":"UDP"
     }
     length_without_src_query_payload = len(json.dumps(template))
 
@@ -50,7 +54,7 @@ class JSONQueryRPCTemplate:
     "type":"query",
     "src":"",
     "dst":"",
-    "dstport":"",
+    "protocol":"TCP",
     "query":"",
     "payload":""
     }
@@ -61,6 +65,7 @@ class JSONResponseRPCTemplate:
     "id":"xxxx",
     "type":"response",
     "src":"",
+    "protocol":"TCP",
     "payload":""
     }
     length_without_src_query_payload = len(json.dumps(template))

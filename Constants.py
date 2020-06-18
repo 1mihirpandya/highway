@@ -6,6 +6,8 @@ class Constants:
         ACK = "heartbeat_ack"
         QUERY = "query"
         RESPONSE = "response"
+        UDP = "UDP"
+        TCP = "TCP"
 
     class Heartbeat:
         FILES = "update_filelist"

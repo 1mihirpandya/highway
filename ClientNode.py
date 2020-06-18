@@ -1,9 +1,10 @@
-from NetworkClient import *
-from NetworkClientCache import *
-from JSONTemplate import *
 from GatekeeperClient import *
+from NetworkClientCache import *
+from ClientProtocol import ClientProtocol
 import argparse
 import math
+import socket
+import sys
 
 #ClientNode sends a dictionary to NetworkClient, and receives a dictionary from NetworkClient
 class ClientNode:
@@ -15,10 +16,13 @@ class ClientNode:
         hostname = socket.gethostname()
         self.ip = socket.gethostbyname(hostname)
         self.network_cache = NetworkClientCache(self.ip)
-        self.network_client = NetworkClient(self, self.network_cache, self.ip)
+        self.client_protocol = ClientProtocol(self, self.network_cache)
+
+    def listen_to_ports(self):
+        self.client_protocol.listen_to_ports()
 
     def connect_to_network(self):
-        gatekeeper_suggestion = GatekeeperClient.connect_to_network(self.network_client.get_src_addr()) #http request to gatekeeper
+        gatekeeper_suggestion = GatekeeperClient.connect_to_network(self.get_src_addr()) #http request to gatekeeper
         if not gatekeeper_suggestion:
             return
         potential_connections = [gatekeeper_suggestion]
@@ -26,85 +30,46 @@ class ClientNode:
 
     def connect(self, potential_connections):
         #num_clients = math.inf #answer from gatekeeper
-        query = JSONQueryRPCTemplate.template
-        query["src"] = self.network_client.get_src_addr()
-        query["query"] = "get_neighbors"
         while len(potential_connections) > 0: #or TTL/round count?
             candidate = potential_connections[0]
             if candidate == "|":
                 potential_connections.append("|")
                 continue
-            query["dst"] = candidate
-            #neighbors_of_candidate = candidate.get_neighbors(network_client)
-            response = self.network_client.send_rpc(query)
-            if len(response["payload"]) < self.connection_load * self.num_clients:
+            candidate_neighbors = self.client_protocol.get_neighbors(candidate)
+            if len(candidate_neighbors) < self.connection_load * self.num_clients:
                 if candidate in self.neighbors:
                     break
                 complete = self.add_neighbor(candidate)
                 if complete:
                     break
-            potential_connections.extend(response["payload"])
+            potential_connections.extend(candidate)
         #no open positions, an issue for another time...
 
-    def add_neighbor(self, dst):
-        query = JSONQueryRPCTemplate.template
-        query["src"] = self.network_client.get_src_addr()
-        query["query"] = "confirm_neighbor"
-        query["dst"] = dst
-        query["payload"] = self.network_client.get_src_addr()
-        #neighbor.confirm_neighbor()
-        response = self.network_client.send_rpc(query)
-        if response["payload"]["status"] != 0: #for membership, 0 is no, anything else is yes
-            self.update_filelist(None, response["payload"]["files"])
-            self.neighbors.append(dst)
+    def add_neighbor(self, potential_neighbor):
+        status, files = self.client_protocol.add_neighbor(potential_neighbor)
+        if status != 0: #for membership, 0 is no, anything else is yes
+            self.update_filelist(None, files)
+            self.neighbors.append(tuple(potential_neighbor))
             return True
         return False
 
-    def confirm_neighbor(self, payload):
+    def confirm_neighbor(self, potential_neighbor):
         #other checks to see if this node can accept another connection.
         #like net traffic? existing connections? available cpu/memory?
-        response = JSONResponseRPCTemplate.template
-        response["src"] = self.network_client.get_src_addr()
-        response["payload"] = {
-        "status": 0,
-        "files": None
-        }
-        if tuple(payload) not in self.neighbors and len(self.neighbors) < self.connection_load * self.num_clients:
-            response = JSONResponseRPCTemplate.template
-            response["src"] = self.network_client.get_src_addr()
-            response["payload"]["status"] = 1
-            response["payload"]["files"] = list(self.neighbors)
-            self.neighbors.append(tuple(payload))
-        return response
+        if tuple(potential_neighbor) not in self.neighbors and len(self.neighbors) <= self.connection_load * self.num_clients:
+            self.neighbors.append(tuple(potential_neighbor))
+            return 1, self.files
+        return 0, None
 
     def get_neighbors(self, payload):
-        response = JSONResponseRPCTemplate.template
-        response["src"] = self.network_client.get_src_addr()
-        response["payload"] = list(self.neighbors)
-        return response
-
-    def get_neighbor_filelist(self):
-        query = JSONQueryRPCTemplate.template
-        query["src"] = self.network_client.get_src_addr()
-        query["query"] = "get_filelist"
-        for neighbor in self.neighbors:
-            query["dst"] = neighbor[0]
-            query["dstport"] = neighbor[1]
-            response = self.network_client.send_rpc(query)
-            self.update_filelist(response["payload"])
+        return self.neighbors
 
     def get_neighbor_status(self, src, neighbor):
         neighbor = tuple(neighbor)
         if self.network_cache.neighbors[neighbor]:
-            return {
-            "neighbor": neighbor,
-            "last_ack": self.network_cache.neighbors[neighbor].last_ack
-            }
+            return neighbor, self.network_cache.neighbors[neighbor].last_ack
         else:
-            return {
-            "neighbor": neighbor,
-            "last_ack": "00-00-0000 00:00:00"
-            }
+            return neighbor, "00-00-0000 00:00:00"
 
     def update_filelist(self, src, files):
         for file in files:
@@ -114,17 +79,11 @@ class ClientNode:
     def update_neighbors(self, src, neighbors):
         self.network_cache.update_cache(src, neighbors_of_neighbors=neighbors)
 
-    def get_filelist(self, payload):
-        response = JSONResponseRPCTemplate.template
-        response["src"] = self.network_client.get_src_addr()
-        response["payload"] = self.files
-        return response
-
     def heartbeat_filelist(self):
-        self.network_client.heartbeat(Constants.Heartbeat.FILES, self.files, self.neighbors, Constants.Heartbeat.FILES_FREQUENCY)
+        self.client_protocol.heartbeat(Constants.Heartbeat.FILES, self.files, self.neighbors, Constants.Heartbeat.FILES_FREQUENCY)
 
     def heartbeat_neighbors(self):
-        self.network_client.heartbeat(Constants.Heartbeat.NEIGHBORS, self.neighbors, self.neighbors, Constants.Heartbeat.NEIGHBORS_FREQUENCY)
+        self.client_protocol.heartbeat(Constants.Heartbeat.NEIGHBORS, self.neighbors, self.neighbors, Constants.Heartbeat.NEIGHBORS_FREQUENCY)
 
     def failure_detector(self):
         try:
@@ -132,9 +91,8 @@ class ClientNode:
                 time.sleep(Constants.Heartbeat.TIMEOUT)
                 to_delete = []
                 ref = self.network_cache.neighbors
-                #print("failure detection ", ref.keys())
-                for neighbor in ref:
-                    #print("failure detection a", neighbor)
+                keys = list(ref.keys())
+                for neighbor in keys:
                     neighbor_of_neighbor_addrs = ref[neighbor].neighbors
                     if not ref[neighbor].last_sent:
                         continue
@@ -147,14 +105,14 @@ class ClientNode:
                         #send message to gatekeeper
                     elif TimeManager.get_time_diff_in_seconds(ref[neighbor].last_sent, ref[neighbor].last_ack) > Constants.Heartbeat.TIMEOUT:
                         ref[neighbor].status = CacheConstants.WARNING
-                        self.network_client.send_udp_query("get_neighbor_status", neighbor, random.sample(neighbor_of_neighbor_addrs, min(len(neighbor_of_neighbor_addrs),3)))
-                #print("failure detection d", to_delete)
+                        self.client_protocol.get_neighbor_status(neighbor, neighbor_of_neighbor_addrs)
                 for addr in to_delete:
                     if addr in self.neighbors:
-                        #print("failure detection ind", addr)
                         self.neighbors.remove(addr)
-                        #print("failure detection ind2", self.neighbors)
                     del ref[addr]
                 #print()
         except KeyboardInterrupt:
             sys.exit(1)
+
+    def get_src_addr(self):
+        return self.network_cache.get_src_addr()

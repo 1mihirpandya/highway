@@ -1,17 +1,19 @@
 #!/usr/bin/env python
-from scapy.all import *
 from NetworkClientCache import *
 from JSONTemplate import *
+from ClientDelegate import *
 import socket
+import struct
 import threading
 import random
 import json
+import sys
 
 class NetworkClient:
 
-    def __init__(self, client_node, network_cache, ip):
+    def __init__(self, client_delegate, network_cache, ip):
+        self.client_delegate = client_delegate
         self.network_cache = network_cache
-        self.client_node = client_node
         self.ip = ip
 
     def listen_to_ports(self):
@@ -30,16 +32,10 @@ class NetworkClient:
                 with conn:
                     print('TCP connected by', addr)
                     payload = self.recv_msg_tcp(conn)
-                    #print(payload)
                     dict_payload = json.loads(payload)
-                    dict_payload["src"] = tuple(dict_payload["src"])
-                    #print(35, dict_payload["src"])
                     self.network_cache.update_cache(dict_payload["src"], last_received=TimeManager.get_formatted_time())
-                    #print(dict_payload)
-                    response = getattr(self.client_node, dict_payload["query"])(dict_payload["payload"])
-                    response = json.dumps(response).encode()
+                    response = self.client_delegate.receive(dict_payload)
                     self.send_msg_tcp(conn, response)
-                    #print(41, dict_payload["src"])
                     self.network_cache.update_cache(dict_payload["src"], last_sent=TimeManager.get_formatted_time(), last_received=TimeManager.get_formatted_time())
                 print("TCP connection closed")
         except KeyboardInterrupt:
@@ -56,98 +52,35 @@ class NetworkClient:
                 # TODO: Multi-sized packets
                 payload, address = sock.recvfrom(1024)
                 dict_payload = json.loads(payload)
-                dict_payload["src"] = tuple(dict_payload["src"])
-                self.network_cache.update_cache(dict_payload["src"], last_received=TimeManager.get_formatted_time())
-                if dict_payload["type"] == Constants.Network.HEARTBEAT:
-                    content = dict_payload["payload"]
-                    getattr(self.client_node, dict_payload["query"])(dict_payload["src"], dict_payload["payload"])
-                    resp = JSONHeartbeatAckTemplate.template
-                    resp["src"] = self.get_src_addr()
-                    json_resp = json.dumps(resp)
-                    self.send_udp(json_resp, self.get_udp_addr(dict_payload["src"]))
+                src = tuple(dict_payload["src"])
+                self.network_cache.update_cache(src, last_received=TimeManager.get_formatted_time())
                 if dict_payload["type"] == Constants.Network.ACK:
-                    self.network_cache.update_cache(dict_payload["src"], last_ack=TimeManager.get_formatted_time())
-                if dict_payload["type"] == Constants.Network.QUERY:
-                    proc_th = threading.Thread(target=self.respond_to_udp_query, kwargs={"query":dict_payload}, daemon=True)
-                    proc_th.start()
-                if dict_payload["type"] == Constants.Network.RESPONSE:
-                    proc_th = threading.Thread(target=self.process_udp_response, kwargs={"query":dict_payload}, daemon=True)
-                    proc_th.start()
+                    #print("ack", dict_payload)
+                    self.network_cache.update_cache(src, last_ack=TimeManager.get_formatted_time())
+                self.client_delegate.receive(dict_payload)
         except KeyboardInterrupt:
             sock.close()
             sys.exit(1)
 
-    def process_udp_response(self, query):
-        query_ids = self.network_cache.query_ids
-        neighbors = self.network_cache.neighbors
-        if query_ids[query["id"]].query == "get_neighbor_status":
-            if TimeManager.get_time_diff_in_seconds(neighbors[query["payload"]["neighbor"]].last_sent, query["payload"]["last_ack"]) < Constants.Heartbeat.TIMEOUT:
-                ref[neighbor].status = CacheConstants.OKAY
-        query_ids[query["id"]] = None
-
-
-    def respond_to_udp_query(self, query):
-        response = JSONResponseUDPTemplate.template
-        response["id"] = query["id"]
-        response["src"] = query["dst"]
-        response["dst"] = query["src"]
-        response["payload"] = getattr(self.client_node, query["query"])(query["src"], query["payload"])
-        dst = self.get_udp_addr(response["dst"])
-        response = json.dumps(response)
-        #print(response["dst"])
-        self.send_udp(response, dst)
-        #self.network_cache.update_cache(response["dst"], last_sent=TimeManager.get_formatted_time(), last_received=TimeManager.get_formatted_time())
-
-    def heartbeat(self, name, payload, neighbors, frequency=5):
-        try:
-            while True:
-                for neighbor in neighbors:
-                    msg = JSONHeartbeatUDPTemplate.template
-                    msg["src"] = self.get_src_addr()
-                    msg["query"] = name
-                    msg["payload"] = list(payload)
-                    self.send_udp(json.dumps(msg), (neighbor[0],neighbor[-1]))
-                    #print(84, dict_payload["src"])
-                    self.network_cache.update_cache(neighbor, last_sent=TimeManager.get_formatted_time())
-                time.sleep(frequency)
-        except KeyboardInterrupt:
-            sys.exit(1)
-
-    def send_udp_query(self, q, payload, destinations):
-        query = JSONQueryUDPTemplate.template
-        query["id"] = self.network_cache.get_query_id(query)
-        query["src"] = self.get_src_addr()
-        query["query"] = q
-        query["payload"] = payload
-        for dst in destinations:
-            query["dst"] = dst
-            #print(query)
-            #print()
-            self.send_udp(json.dumps(query), self.get_udp_addr(dst))
-
     def send_udp(self, query, dst):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(query.encode(), dst)
+        sock.sendto(query, self.get_udp_addr(dst))
+        self.network_cache.update_cache(dst, last_sent=TimeManager.get_formatted_time())
 
-    def send_rpc(self, query):
-        query["id"] = self.network_cache.get_query_id()
-        json_query = json.dumps(query)
-        #print(json_query)
+    def send_rpc(self, query, dst):
+        #query["id"] = self.network_cache.get_query_id()
+        #json_query = json.dumps(query)
         #network_cache.update_cache(neighbor, last_sent=TimeManager.get_formatted_time())
-        payload = self.send_recv_tcp_using_socket(json_query, (query["dst"], query["dstport"]))
-        self.network_cache.query_ids[query["id"]] = None
-        #print(payload)
+        payload = self.send_recv_tcp_using_socket(query, dst)
+        #self.network_cache.query_ids[query["id"]] = None
         return json.loads(payload)
 
     def send_recv_tcp_using_socket(self, query, dst):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #print(dst)
-        #print()
-        #print()
-        s.connect((dst[0], dst[1]))#self.tcp_port))
-        self.send_msg_tcp(s, query.encode())
-        payload = self.recv_msg_tcp(s)
-        s.close()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(self.get_tcp_addr(dst))
+        self.send_msg_tcp(sock, query)
+        payload = self.recv_msg_tcp(sock)
+        sock.close()
         return payload
 
     def send_msg_tcp(self, sock, msg):
