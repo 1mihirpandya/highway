@@ -18,6 +18,18 @@ class ClientNode:
         self.network_cache = NetworkClientCache(self.ip)
         self.client_protocol = ClientProtocol(self, self.network_cache)
 
+    def find_file(self, filename):
+        on_machine = self.check_for_file(None, filename)
+        if on_machine:
+            return on_machine
+        else:
+            return self.client_protocol.ask_neighbors_for_file(filename, self.neighbors)
+
+    def check_for_file(self, src, filename):
+        if filename in self.files:
+            return self.get_src_addr()
+        return self.client_protocol.check_neighbor_files(filename)
+
     def listen_to_ports(self):
         self.client_protocol.listen_to_ports()
 
@@ -48,7 +60,7 @@ class ClientNode:
     def add_neighbor(self, potential_neighbor):
         status, files = self.client_protocol.add_neighbor(potential_neighbor)
         if status != 0: #for membership, 0 is no, anything else is yes
-            self.update_filelist(None, files)
+            self.update_filelist(files)
             self.neighbors.append(tuple(potential_neighbor))
             return True
         return False
@@ -71,13 +83,10 @@ class ClientNode:
         else:
             return neighbor, "00-00-0000 00:00:00"
 
-    def update_filelist(self, src, files):
+    def update_filelist(self, files):
         for file in files:
             if file not in self.files:
                 self.files.append(file)
-
-    def update_neighbors(self, src, neighbors):
-        self.network_cache.update_cache(src, neighbors_of_neighbors=neighbors)
 
     def heartbeat_filelist(self):
         self.client_protocol.heartbeat(Constants.Heartbeat.FILES, self.files, self.neighbors, Constants.Heartbeat.FILES_FREQUENCY)

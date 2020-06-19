@@ -46,9 +46,16 @@ def delegate(input):
         print("Current Files:", client.files)
     elif input.startswith("showcache"):
         print("Query Ids: ", client.network_cache.query_ids, "\n")
+        for query_id in client.network_cache.query_ids:
+            print("ID: {}".format(query_id))
+            print(client.network_cache.query_ids[query_id].printable())
+        print()
         for neighbor in client.network_cache.neighbors:
             print("Neighbor: {}".format(neighbor))
             print(client.network_cache.neighbors[neighbor].printable())
+    elif input.startswith("findfile "):
+        filename = input[len("findfile "):]
+        print(client.find_file(filename))
 
 if __name__ == "__main__":
     args = parse_arguments()

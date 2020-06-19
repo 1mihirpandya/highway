@@ -10,8 +10,8 @@ class Constants:
         TCP = "TCP"
 
     class Heartbeat:
-        FILES = "update_filelist"
-        NEIGHBORS = "update_neighbors"
+        FILES = "cache_neighbor_files"
+        NEIGHBORS = "cache_neighbor_neighbors"
         FILES_FREQUENCY = 5
         NEIGHBORS_FREQUENCY = 1
         TIMEOUT = 15

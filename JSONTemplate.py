@@ -12,7 +12,8 @@ class JSONQueryUDPTemplate:
     "dst":"",
     "protocol":"UDP",
     "query":"",
-    "payload":""
+    "payload":"",
+    "ttl":0
     }
     length_without_src_query_payload = len(json.dumps(template))
 
