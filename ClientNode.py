@@ -1,5 +1,7 @@
 from GatekeeperClient import *
 from NetworkClientCache import *
+from NetworkClient import *
+from FileProtocol import FileProtocol
 from ClientProtocol import ClientProtocol
 import argparse
 import math
@@ -16,15 +18,17 @@ class ClientNode:
         hostname = socket.gethostname()
         self.ip = socket.gethostbyname(hostname)
         self.network_cache = NetworkClientCache(self.ip)
-        self.client_protocol = ClientProtocol(self, self.network_cache)
+        network_client = NetworkClient(None, self.network_cache, None, self.ip)
+        self.file_protocol = FileProtocol(network_client)
+        self.client_protocol = ClientProtocol(self, network_client)
 
     def get_file(self, filename):
         loc = self.find_file(filename)
         if loc:
-            self.client_protocol.get_file(filename, loc)
+            self.file_protocol.get_file(filename, loc)
 
-    def load_file(self, filename):
-        return self.client_protocol.load_file(filename)
+    #def load_file(self, filename):
+    #    return self.client_protocol.load_file(filename)
 
     def find_file(self, filename):
         on_machine = False#self.check_for_file(None, filename)

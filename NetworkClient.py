@@ -11,12 +11,11 @@ import sys
 
 class NetworkClient:
 
-    def __init__(self, client_delegate, network_cache, file_protocol, ip):
+    def __init__(self, client_delegate, network_cache, file_delegate, ip):
         self.client_delegate = client_delegate
-        self.file_protocol = file_protocol
+        self.file_delegate = file_delegate
         self.network_cache = network_cache
         self.ip = ip
-        self.file_protocol.set_network_client(self)
 
     def listen_to_ports(self):
         #udp_port
@@ -37,7 +36,7 @@ class NetworkClient:
                     dict_payload = json.loads(payload)
                     self.network_cache.update_cache(dict_payload["src"], last_received=TimeManager.get_formatted_time())
                     if dict_payload["protocol"] == "fstream":
-                        self.file_protocol.receive(dict_payload, conn)
+                        self.file_delegate.receive(dict_payload, conn)
                     else:
                         response = self.client_delegate.receive(dict_payload)
                         self.send_msg_tcp(conn, response)
@@ -88,6 +87,26 @@ class NetworkClient:
         sock.close()
         return payload
 
+    def stream(self, query, dst):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(self.get_tcp_addr(dst))
+        self.send_msg_tcp(sock, query)
+        raw_msglen = self.recvall_tcp(sock, 4)
+        if not raw_msglen:
+            yield None
+        msglen = struct.unpack('>I', raw_msglen)[0]
+        for packet in self.receive_stream_packet(sock, msglen):
+            yield packet
+
+    def receive_stream_packet(self, sock, msglen):
+        data_len = 0
+        while data_len < msglen:
+            packet = sock.recv(msglen - data_len)
+            if not packet:
+                yield None
+            yield packet
+            data_len += len(packet)
+
     def send_msg_tcp(self, sock, msg):
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
@@ -111,6 +130,9 @@ class NetworkClient:
                 return None
             data.extend(packet)
         return data
+
+    def get_query_id(self):
+        return self.network_cache.get_query_id()
 
     def get_src_addr(self):
         return (self.ip, self.network_cache.tcp_port, self.network_cache.udp_port)

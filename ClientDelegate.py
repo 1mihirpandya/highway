@@ -1,11 +1,13 @@
 from ClientNode import *
 from NetworkClient import *
+import threading
 
 class ClientDelegate:
-    def __init__(self, client_node, file_protocol, network_cache):
+    def __init__(self, client_node, network_client):
         self.client_node = client_node
-        self.network_cache = network_cache
-        self.network_client = NetworkClient(self, self.network_cache, file_protocol, self.network_cache.ip)
+        self.network_client = network_client
+        self.network_client.client_delegate = self
+        self.network_cache = self.network_client.network_cache
 
     def get_neighbors(self):
         return self.client_node.neighbors
