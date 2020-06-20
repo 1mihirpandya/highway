@@ -1,14 +1,26 @@
 from JSONTemplate import *
 from ClientDelegate import *
+from FileProtocol import *
 import time
 
 
 class ClientProtocol:
     def __init__(self, client_node, network_cache):
-        self.client_delegate = ClientDelegate(client_node, network_cache)
+        self.file_protocol = FileProtocol()
+        self.client_delegate = ClientDelegate(client_node, self.file_protocol, network_cache)
 
     def listen_to_ports(self):
         self.client_delegate.listen_to_ports()
+
+    def load_file(self, filename):
+        return self.file_protocol.load_file(filename)
+
+    def get_file(self, filename, addr):
+        query = JSONQueryRPCTemplate.template
+        query["query"] = "load_file"
+        query["payload"] = filename
+        query["protocol"] = "fstream"
+        return self.file_protocol.send(query, addr)
 
     def get_neighbors(self, addr):
         query = JSONQueryRPCTemplate.template

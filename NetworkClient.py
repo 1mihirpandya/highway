@@ -11,10 +11,12 @@ import sys
 
 class NetworkClient:
 
-    def __init__(self, client_delegate, network_cache, ip):
+    def __init__(self, client_delegate, network_cache, file_protocol, ip):
         self.client_delegate = client_delegate
+        self.file_protocol = file_protocol
         self.network_cache = network_cache
         self.ip = ip
+        self.file_protocol.set_network_client(self)
 
     def listen_to_ports(self):
         #udp_port
@@ -34,8 +36,11 @@ class NetworkClient:
                     payload = self.recv_msg_tcp(conn)
                     dict_payload = json.loads(payload)
                     self.network_cache.update_cache(dict_payload["src"], last_received=TimeManager.get_formatted_time())
-                    response = self.client_delegate.receive(dict_payload)
-                    self.send_msg_tcp(conn, response)
+                    if dict_payload["protocol"] == "fstream":
+                        self.file_protocol.receive(dict_payload, conn)
+                    else:
+                        response = self.client_delegate.receive(dict_payload)
+                        self.send_msg_tcp(conn, response)
                     self.network_cache.update_cache(dict_payload["src"], last_sent=TimeManager.get_formatted_time(), last_received=TimeManager.get_formatted_time())
                 print("TCP connection closed")
         except KeyboardInterrupt:

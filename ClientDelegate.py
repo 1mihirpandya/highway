@@ -2,10 +2,10 @@ from ClientNode import *
 from NetworkClient import *
 
 class ClientDelegate:
-    def __init__(self, client_node, network_cache):
+    def __init__(self, client_node, file_protocol, network_cache):
         self.client_node = client_node
         self.network_cache = network_cache
-        self.network_client = NetworkClient(self, self.network_cache, self.network_cache.ip)
+        self.network_client = NetworkClient(self, self.network_cache, file_protocol, self.network_cache.ip)
 
     def get_neighbors(self):
         return self.client_node.neighbors

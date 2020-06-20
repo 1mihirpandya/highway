@@ -18,8 +18,16 @@ class ClientNode:
         self.network_cache = NetworkClientCache(self.ip)
         self.client_protocol = ClientProtocol(self, self.network_cache)
 
+    def get_file(self, filename):
+        loc = self.find_file(filename)
+        if loc:
+            self.client_protocol.get_file(filename, loc)
+
+    def load_file(self, filename):
+        return self.client_protocol.load_file(filename)
+
     def find_file(self, filename):
-        on_machine = self.check_for_file(None, filename)
+        on_machine = False#self.check_for_file(None, filename)
         if on_machine:
             return on_machine
         else:

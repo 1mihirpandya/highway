@@ -56,6 +56,9 @@ def delegate(input):
     elif input.startswith("findfile "):
         filename = input[len("findfile "):]
         print(client.find_file(filename))
+    elif input.startswith("getfile "):
+        filename = input[len("getfile "):]
+        print(client.get_file(filename))
 
 if __name__ == "__main__":
     args = parse_arguments()
