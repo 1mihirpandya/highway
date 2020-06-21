@@ -27,6 +27,7 @@ class ClientDelegate:
         self.network_client.listen_to_ports()
 
     def cache_neighbor_files(self, src, files):
+        print(files)
         self.network_cache.update_cache(src, files=files)
 
     def cache_neighbor_neighbors(self, src, neighbors):
@@ -65,6 +66,7 @@ class ClientDelegate:
 
     def receive_udp(self, query):
         if query["type"] == Constants.Network.HEARTBEAT:
+            #print(query)
             getattr(self, query["query"])(query["src"], query["payload"])
             resp = JSONHeartbeatAckTemplate.template
             resp["src"] = self.get_src_addr()

@@ -18,7 +18,7 @@ class NeighborInfo():
     def printable(self):
         return {
         "neighbors":self.neighbors,
-        "files":self.neighbors,
+        "files":self.files,
         "last_sent":self.last_sent,
         "last_ack":self.last_ack,
         "last_received":self.last_received

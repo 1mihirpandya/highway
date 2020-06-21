@@ -45,7 +45,11 @@ def delegate(input):
         client.get_neighbor_filelist()
         print("Current Files:", client.files)
     elif input.startswith("showcache"):
-        print("Query Ids: ", client.network_cache.query_ids, "\n")
+        print("Files")
+        file_cache = client.get_file_cache()
+        for file in file_cache.files:
+            print(file, file_cache.files[file])
+        print("Query Ids: ")
         for query_id in client.network_cache.query_ids:
             print("ID: {}".format(query_id))
             print(client.network_cache.query_ids[query_id].printable())
@@ -59,6 +63,9 @@ def delegate(input):
     elif input.startswith("getfile "):
         filename = input[len("getfile "):]
         print(client.get_file(filename))
+    elif input.startswith("setfileroot "):
+        root = input[len("setfileroot "):]
+        client.initialize_files(root)
 
 if __name__ == "__main__":
     args = parse_arguments()

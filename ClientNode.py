@@ -21,17 +21,29 @@ class ClientNode:
         network_client = NetworkClient(None, self.network_cache, None, self.ip)
         self.file_protocol = FileProtocol(network_client)
         self.client_protocol = ClientProtocol(self, network_client)
+        #self.files = self.file_protocol.initialize_files()
+
+    def initialize_files(self, root):
+        self.files = self.file_protocol.initialize_files(root)
+        return self.files
+
+    def get_file_cache(self):
+        return self.file_protocol.get_file_cache()
 
     def get_file(self, filename):
         loc = self.find_file(filename)
+        print(loc)
         if loc:
             self.file_protocol.get_file(filename, loc)
 
     #def load_file(self, filename):
     #    return self.client_protocol.load_file(filename)
 
+    def check_dep(self):
+        self.check_dep(files)
+
     def find_file(self, filename):
-        on_machine = False#self.check_for_file(None, filename)
+        on_machine = self.check_for_file(None, filename)
         if on_machine:
             return on_machine
         else:
