@@ -32,6 +32,8 @@ def delegate(input):
         file_heartbeat_th.start()
         swim_th = threading.Thread(target=client.failure_detector, daemon=True)
         swim_th.start()
+        f_th = threading.Thread(target=client.check_dep, daemon=True)
+        f_th.start()
         print("Services running...")
         print("Heartbeat intitiated...")
         print("IP = {}".format(client.ip))

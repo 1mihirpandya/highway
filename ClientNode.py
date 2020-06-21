@@ -25,6 +25,7 @@ class ClientNode:
 
     def initialize_files(self, root):
         self.files = self.file_protocol.initialize_files(root)
+        print(self.files)
         return self.files
 
     def get_file_cache(self):
@@ -34,13 +35,19 @@ class ClientNode:
         loc = self.find_file(filename)
         print(loc)
         if loc:
-            self.file_protocol.get_file(filename, loc)
+            if self.file_protocol.get_file(filename, loc):
+                self.files.append(filename)
 
     #def load_file(self, filename):
     #    return self.client_protocol.load_file(filename)
 
     def check_dep(self):
-        self.check_dep(files)
+        try:
+            while True:
+                self.files = self.file_protocol.check_dep(self.files)
+                time.sleep(Constants.Heartbeat.TIMEOUT)
+        except KeyboardInterrupt:
+            sys.exit(1)
 
     def find_file(self, filename):
         on_machine = self.check_for_file(None, filename)
@@ -84,7 +91,7 @@ class ClientNode:
     def add_neighbor(self, potential_neighbor):
         status, files = self.client_protocol.add_neighbor(potential_neighbor)
         if status != 0: #for membership, 0 is no, anything else is yes
-            self.update_filelist(files)
+            #self.update_filelist(files)
             self.neighbors.append(tuple(potential_neighbor))
             return True
         return False

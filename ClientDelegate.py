@@ -27,7 +27,7 @@ class ClientDelegate:
         self.network_client.listen_to_ports()
 
     def cache_neighbor_files(self, src, files):
-        print(files)
+        #print(files)
         self.network_cache.update_cache(src, files=files)
 
     def cache_neighbor_neighbors(self, src, neighbors):

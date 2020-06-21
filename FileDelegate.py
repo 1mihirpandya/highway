@@ -60,17 +60,18 @@ class FileDelegate:
         return files#, folders
 
     def check_folder_hierarchy(self, curr_files):
-        root = self.file_cache.root
+        folder = self.file_cache.root
         for file in curr_files:
             paths = self.file_cache.get(file)
+            if not paths:
+                break
             for path in paths:
-                if os.path.isfile(path):
+                if not os.path.isfile(path):
                     self.file_cache.prune(file, path)
             if len(self.file_cache.get(file)) == 0:
                 self.file_cache.remove_file(file)
-        for (root, dirs, fs) in os.walk(foldername):
+        for (root, dirs, fs) in os.walk(folder):
             for name in fs:
                 if not self.file_cache.check(name, os.path.join(root, name)):
                     self.file_cache.add(name, os.path.join(root, name))
-                files.append(name)
         return self.file_cache.get_files()

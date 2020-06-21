@@ -5,6 +5,7 @@ import socket
 from JSONTemplate import *
 from NetworkClient import NetworkClient
 from FileDelegate import FileDelegate
+import time
 
 class FileProtocol():
     def __init__(self, network_client):
@@ -46,9 +47,4 @@ class FileProtocol():
             yield packet
 
     def check_dep(self, files):
-        try:
-            while True:
-                self.file_delegate.check_folder_hierarchy(files)
-                time.sleep(Constants.Heartbeat.TIMEOUT)
-        except KeyboardInterrupt:
-            sys.exit(1)
+        return self.file_delegate.check_folder_hierarchy(files)

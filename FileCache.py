@@ -19,18 +19,19 @@ class FileCache:
         return None
 
     def check(self, filename, path):
-        if path in self.get(filename):
+        paths = self.get(filename)
+        if paths and path in paths:
             return True
         return False
 
-    def prune(file, path):
+    def prune(self, file, path):
         if file in self.files:
-            ref = self.files[filename]
+            ref = self.files[file]
             for p in range(len(ref)):
                 if path == ref[p]:
                     ref = ref[:p] + ref[p + 1:]
 
-    def remove_file(file):
+    def remove_file(self, file):
         del self.files[file]
 
     def get_files(self):
