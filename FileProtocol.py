@@ -47,4 +47,11 @@ class FileProtocol():
             yield packet
 
     def check_dep(self, files):
+        self.file_delegate.update_file_cache()
         return self.file_delegate.check_folder_hierarchy(files)
+
+    def check_cache_for_file(self, filename):
+        res = self.file_delegate.check_cache(filename)
+        if res:
+            return filename, tuple(res)
+        return res

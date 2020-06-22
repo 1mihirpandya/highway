@@ -17,6 +17,9 @@ class NetworkClient:
         self.network_cache = network_cache
         self.ip = ip
 
+    def cache_response(self, filename, addr):
+        self.file_delegate.cache(filename, addr)
+
     def listen_to_ports(self):
         #udp_port
         udp_th = threading.Thread(target=self.listen_to_udp_port, daemon=True)

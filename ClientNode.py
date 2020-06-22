@@ -58,8 +58,8 @@ class ClientNode:
 
     def check_for_file(self, src, filename):
         if filename in self.files:
-            return self.get_src_addr()
-        return self.client_protocol.check_neighbor_files(filename)
+            return filename, self.get_src_addr()
+        return self.file_protocol.check_cache_for_file(filename) or self.client_protocol.check_neighbor_files(filename)
 
     def listen_to_ports(self):
         self.client_protocol.listen_to_ports()
@@ -73,15 +73,17 @@ class ClientNode:
 
     def connect(self, potential_connections):
         #num_clients = math.inf #answer from gatekeeper
+        if len(self.neighbors) >= 5:
+            return
         while len(potential_connections) > 0: #or TTL/round count?
             candidate = potential_connections[0]
             if candidate == "|":
                 potential_connections.append("|")
                 continue
             candidate_neighbors = self.client_protocol.get_neighbors(candidate)
-            if len(candidate_neighbors) < self.connection_load * self.num_clients:
+            if len(candidate_neighbors) < 5:
                 if candidate in self.neighbors:
-                    break
+                    break ##CHANGE TO CONTINUE MAYBE????
                 complete = self.add_neighbor(candidate)
                 if complete:
                     break

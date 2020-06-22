@@ -1,4 +1,5 @@
 from ClientNode import *
+from FileCache import *
 import threading
 
 def parse_arguments():
@@ -37,8 +38,8 @@ def delegate(input):
         print("Services running...")
         print("Heartbeat intitiated...")
         print("IP = {}".format(client.ip))
-        print("UDP Port @ {}".format(client.network_cache.udp_port))
         print("TCP Port @ {}".format(client.network_cache.tcp_port))
+        print("UDP Port @ {}".format(client.network_cache.udp_port))
     elif input.startswith("printfiles"):
         print("Current Files:", client.files)
     elif input.startswith("printneighbors"):
@@ -51,6 +52,8 @@ def delegate(input):
         file_cache = client.get_file_cache()
         for file in file_cache.files:
             print(file, file_cache.files[file])
+        for file in file_cache.cached_files:
+            print(file, file_cache.cached_files[file].addr)
         print("Query Ids: ")
         for query_id in client.network_cache.query_ids:
             print("ID: {}".format(query_id))

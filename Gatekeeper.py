@@ -22,19 +22,24 @@ def get_dict_from_addr(addr):
 
 @app.route('/connect', methods=['POST'])
 def connect():
-    print("\n\n")
-    print(clients)
     #print(request.json)
     ip_and_ports = get_addr_from_dict(request.json)
     #print(ip_and_ports)
+    print("\n\n")
+    print(clients)
     if ip_and_ports and (ip_and_ports not in clients):
         connection_candidate = None
         minimum = math.inf
         for candidate in clients:
+            if clients[candidate] < 5:
+                connection_candidate = candidate
+                break
+            """
             num_connections = clients[candidate]
             if (not connection_candidate) or num_connections <= minimum:
                 minimum = num_connections
                 connection_candidate = candidate
+            """
         clients[ip_and_ports] = 0
         resp = connection_response_template
         if connection_candidate:

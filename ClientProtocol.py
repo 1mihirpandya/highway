@@ -23,8 +23,10 @@ class ClientProtocol:
         return self.client_delegate.send(query, addr)
 
     def check_neighbor_files(self, filename):
-        results = self.client_delegate.find_neighbor_file_location(filename)
-        return results
+        result = self.client_delegate.find_neighbor_file_location(filename)
+        if result:
+            return filename, tuple(result)
+        return result
 
     def ask_neighbors_for_file(self, filename, neighbors):
         query = JSONQueryUDPTemplate.template
@@ -37,7 +39,7 @@ class ClientProtocol:
         result = self.client_delegate.get_resp(id)
         #print(id, result)
         self.client_delegate.mark_sync_query_as_completed(id)
-        if result: return tuple(result)
+        if result: return tuple(result[1])
         return None
 
 

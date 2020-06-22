@@ -25,11 +25,12 @@ class NeighborInfo():
         }
 
 class QueryInfo():
-    def __init__(self, query, dst=None, src=None):
+    def __init__(self, query, waiting, dst=None, src=None):
         self.query = query
         self.dst = dst
         self.src = src
         self.payload = None
+        self.waiting = waiting
         self.status = 0
 
     def printable(self):
@@ -81,15 +82,15 @@ class NetworkClientCache():
             return True
         return False
 
-    def get_query_id(self, query=""):
+    def get_query_id(self, query="", waiting=0):
         id = random.randint(0,10000)
         while id in self.query_ids:
             id = random.randint(0,10000)
-        self.query_ids[id] = QueryInfo(query)
+        self.query_ids[id] = QueryInfo(query, waiting)
         return id
 
-    def cache_query(self, query, id, src, dst):
-        self.query_ids[id] = QueryInfo(query, dst, src)
+    def cache_query(self, query, id, src, dst, waiting):
+        self.query_ids[id] = QueryInfo(query, waiting, dst, src)
 
     def get_src_addr(self):
         return (self.ip, self.tcp_port, self.udp_port)
