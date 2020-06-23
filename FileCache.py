@@ -42,10 +42,7 @@ class FileCache:
 
     def prune(self, file, path):
         if file in self.files:
-            ref = self.files[file]
-            for p in range(len(ref)):
-                if path == ref[p]:
-                    ref = ref[:p] + ref[p + 1:]
+            self.files[file].remove(path)
 
     def remove_file(self, file):
         del self.files[file]

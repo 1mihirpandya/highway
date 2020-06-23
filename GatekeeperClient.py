@@ -17,13 +17,8 @@ class GatekeeperClient:
                 return None
             else:
                 potential_connection = (content["ip"], content["tcp"], content["udp"])
-                print("GatekeeperClient Response", potential_connection)
-                print(potential_connection)
                 return potential_connection
 
     def notify_client_dead(addr):
         data = {'ip':addr[0], 'tcp':addr[1], 'udp':addr[2]}
         response = requests.delete((GatekeeperClient.URL + GatekeeperClient.DELETE), json=data)
-
-    #def randx():
-    #    print(URL)

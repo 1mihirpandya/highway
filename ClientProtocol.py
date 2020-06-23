@@ -8,9 +8,6 @@ class ClientProtocol:
     def __init__(self, client_node, network_client):
         self.client_delegate = ClientDelegate(client_node, network_client)
 
-    def listen_to_ports(self):
-        self.client_delegate.listen_to_ports()
-
     def get_neighbors(self, addr):
         query = JSONQueryRPCTemplate.template
         query["query"] = "get_neighbors"
@@ -42,6 +39,13 @@ class ClientProtocol:
         if result: return tuple(result[1])
         return None
 
+    #UNDERLYING SERVICES
+
+    def listen_to_udp_port(self):
+        self.client_delegate.listen_to_udp_port()
+
+    def listen_to_tcp_port(self):
+        self.client_delegate.listen_to_tcp_port()
 
     def heartbeat(self, name, payload, neighbors, frequency):
         try:
@@ -58,7 +62,8 @@ class ClientProtocol:
         query = JSONQueryUDPTemplate.template
         query["query"] = "get_neighbor_status"
         query["payload"] = neighbor
-        destinations = random.sample(neighbor_of_neighbor_addrs, min(len(neighbor_of_neighbor_addrs),3))
+        num_destinations = min(len(neighbor_of_neighbor_addrs), Constants.FD.SWIM_CONTACT)
+        destinations = random.sample(neighbor_of_neighbor_addrs, num_destinations)
         self.client_delegate.send(query, destinations)
 
     def get_src_addr(self):

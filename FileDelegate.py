@@ -48,29 +48,6 @@ class FileDelegate:
     def set_file_root(self, root):
         self.file_cache.root = root
 
-    def get_folder_hierarchy(self, foldername):
-        files = []
-        #folders = []
-        for (root, dirs, fs) in os.walk(foldername):
-            for name in fs:
-                self.file_cache.add(name, os.path.join(root, name))
-                files.append(name)
-            #for name in dirs:
-            #    folders.append(name)
-        return files#, folders
-
-    def check_cache(self, filename):
-        cached_files = list(self.file_cache.cached_files.keys())
-        if filename in cached_files:
-            return self.file_cache.cached_files[filename].addr
-
-    def update_file_cache(self):
-        cached_files = list(self.file_cache.cached_files.keys())
-        for file in cached_files:
-            self.file_cache.cached_files[file].persistance -= 1
-            if self.file_cache.cached_files[file].persistance == 0:
-                del self.file_cache.cached_files[file]
-
     def check_folder_hierarchy(self, curr_files):
         folder = self.file_cache.root
         for file in curr_files:
@@ -88,5 +65,28 @@ class FileDelegate:
                     self.file_cache.add(name, os.path.join(root, name))
         return self.file_cache.get_files()
 
+    def check_cache(self, filename):
+        cached_files = list(self.file_cache.cached_files.keys())
+        if filename in cached_files:
+            return self.file_cache.cached_files[filename].addr
+
+    def update_file_cache(self):
+        cached_files = list(self.file_cache.cached_files.keys())
+        for file in cached_files:
+            self.file_cache.cached_files[file].persistance -= 1
+            if self.file_cache.cached_files[file].persistance == 0:
+                del self.file_cache.cached_files[file]
+
     def cache(self, filename, addr):
         self.file_cache.store(filename, addr)
+
+    ####################
+    #DEPRECATED
+
+    def get_folder_hierarchy(self, foldername):
+        files = []
+        for (root, dirs, fs) in os.walk(foldername):
+            for name in fs:
+                self.file_cache.add(name, os.path.join(root, name))
+                files.append(name)
+        return files

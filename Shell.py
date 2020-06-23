@@ -1,6 +1,7 @@
 from ClientNode import *
 from FileCache import *
 import threading
+import time
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -13,19 +14,20 @@ def parse_arguments():
     return parser.parse_args()
 
 def delegate(input):
+    """
     if input.startswith("addfile "):
         filename = input[len("addfile "):]
         client.files.append(filename)
         print("Current Files:", client.files)
-    elif input.startswith("connect"):
-        client.connect_to_network()
-        print("Current Neighbors:", client.neighbors)
-    elif input.startswith("testneighbor "):
-        a = input[len("testneighbor "):].split()
-        client.neighbors.append((a[0], int(a[1])))
-        print("Current Neighbors:", client.neighbors)
-    elif input.startswith("start"):
-        listener_th = threading.Thread(target=client.listen_to_ports, daemon=True)
+    """
+    if input.startswith("start "):
+        root = input[len("start "):]
+        files = client.initialize_files(root)
+        print("Files: {}".format(files))
+        time.sleep(0.5)
+        listener_th = threading.Thread(target=client.listen_to_udp_port, daemon=True)
+        listener_th.start()
+        listener_th = threading.Thread(target=client.listen_to_tcp_port, daemon=True)
         listener_th.start()
         file_heartbeat_th = threading.Thread(target=client.heartbeat_filelist, daemon=True)
         file_heartbeat_th.start()
@@ -33,27 +35,30 @@ def delegate(input):
         file_heartbeat_th.start()
         swim_th = threading.Thread(target=client.failure_detector, daemon=True)
         swim_th.start()
-        f_th = threading.Thread(target=client.check_dep, daemon=True)
+        f_th = threading.Thread(target=client.update_file_dep, daemon=True)
         f_th.start()
         print("Services running...")
         print("Heartbeat intitiated...")
         print("IP = {}".format(client.ip))
         print("TCP Port @ {}".format(client.network_cache.tcp_port))
         print("UDP Port @ {}".format(client.network_cache.udp_port))
+        while client.network_cache.tcp_port == None and client.network_cache.udp_port == None:
+            pass
+        client.connect_to_network()
+        print("Current Neighbors:", client.neighbors)
     elif input.startswith("printfiles"):
         print("Current Files:", client.files)
     elif input.startswith("printneighbors"):
         print("Current Neighbors:", client.neighbors)
-    elif input.startswith("getneighborsfiles"):
-        client.get_neighbor_filelist()
-        print("Current Files:", client.files)
     elif input.startswith("showcache"):
-        print("Files")
+        print("My Files:")
         file_cache = client.get_file_cache()
         for file in file_cache.files:
             print(file, file_cache.files[file])
+        print("Cached Files:")
         for file in file_cache.cached_files:
             print(file, file_cache.cached_files[file].addr)
+        print()
         print("Query Ids: ")
         for query_id in client.network_cache.query_ids:
             print("ID: {}".format(query_id))
@@ -68,9 +73,6 @@ def delegate(input):
     elif input.startswith("getfile "):
         filename = input[len("getfile "):]
         print(client.get_file(filename))
-    elif input.startswith("setfileroot "):
-        root = input[len("setfileroot "):]
-        client.initialize_files(root)
 
 if __name__ == "__main__":
     args = parse_arguments()

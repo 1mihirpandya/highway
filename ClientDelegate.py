@@ -22,12 +22,7 @@ class ClientDelegate:
                 return neighbor
         return None
 
-
-    def listen_to_ports(self):
-        self.network_client.listen_to_ports()
-
     def cache_neighbor_files(self, src, files):
-        #print(files)
         self.network_cache.update_cache(src, files=files)
 
     def cache_neighbor_neighbors(self, src, neighbors):
@@ -79,9 +74,8 @@ class ClientDelegate:
             proc_th.start()
 
     def receive_tcp(self, query):
-        query["src"] = tuple(query["src"])
-        query["dst"] = tuple(query["dst"])
-
+        #query["src"] = tuple(query["src"])
+        #query["dst"] = tuple(query["dst"])
         response = JSONQueryRPCTemplate.template
         response["src"] = query["dst"]
         response["dst"] = query["src"]
@@ -157,3 +151,10 @@ class ClientDelegate:
 
     def get_src_addr(self):
         return self.network_cache.get_src_addr()
+
+    #UNDERLYING SERVICES
+    def listen_to_udp_port(self):
+        self.network_client.listen_to_udp_port()
+
+    def listen_to_tcp_port(self):
+        self.network_client.listen_to_tcp_port()

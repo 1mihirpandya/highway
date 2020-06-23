@@ -20,31 +20,24 @@ class NetworkClient:
     def cache_response(self, filename, addr):
         self.file_delegate.cache(filename, addr)
 
-    def listen_to_ports(self):
-        #udp_port
-        udp_th = threading.Thread(target=self.listen_to_udp_port, daemon=True)
-        udp_th.start()
-        #tcp port
+    def listen_to_tcp_port(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind((self.ip, 0)) #CHANGE THIS
+        sock.bind((self.ip, 0))
         self.network_cache.tcp_port = sock.getsockname()[1]
-        #print("tcp", self.network_cache.tcp_port)
         sock.listen()
         try:
             while True:
                 conn, addr = sock.accept()
                 with conn:
-                    print('TCP connected by', addr)
                     payload = self.recv_msg_tcp(conn)
                     dict_payload = json.loads(payload)
                     self.network_cache.update_cache(dict_payload["src"], last_received=TimeManager.get_formatted_time())
-                    if dict_payload["protocol"] == "fstream":
+                    if dict_payload["protocol"] == Constants.Network.STREAM:
                         self.file_delegate.receive(dict_payload, conn)
                     else:
                         response = self.client_delegate.receive(dict_payload)
                         self.send_msg_tcp(conn, response)
-                    self.network_cache.update_cache(dict_payload["src"], last_sent=TimeManager.get_formatted_time(), last_received=TimeManager.get_formatted_time())
-                print("TCP connection closed")
+                    self.network_cache.update_cache(dict_payload["src"], last_sent=TimeManager.get_formatted_time())
         except KeyboardInterrupt:
             sock.close()
             sys.exit(1)
@@ -53,16 +46,14 @@ class NetworkClient:
         sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         sock.bind((self.ip, 0))
         self.network_cache.udp_port = sock.getsockname()[1]
-        #print("udp", self.network_cache.udp_port)
         try:
             while True:
                 # TODO: Multi-sized packets
                 payload, address = sock.recvfrom(1024)
                 dict_payload = json.loads(payload)
                 src = tuple(dict_payload["src"])
-                self.network_cache.update_cache(src, last_received=TimeManager.get_formatted_time())
+                #self.network_cache.update_cache(src, last_received=TimeManager.get_formatted_time())
                 if dict_payload["type"] == Constants.Network.ACK:
-                    #print("ack", dict_payload)
                     self.network_cache.update_cache(src, last_ack=TimeManager.get_formatted_time())
                 self.client_delegate.receive(dict_payload)
         except KeyboardInterrupt:

@@ -21,33 +21,22 @@ class ClientNode:
         network_client = NetworkClient(None, self.network_cache, None, self.ip)
         self.file_protocol = FileProtocol(network_client)
         self.client_protocol = ClientProtocol(self, network_client)
-        #self.files = self.file_protocol.initialize_files()
 
     def initialize_files(self, root):
         self.files = self.file_protocol.initialize_files(root)
-        print(self.files)
         return self.files
 
     def get_file_cache(self):
         return self.file_protocol.get_file_cache()
 
     def get_file(self, filename):
-        loc = self.find_file(filename)
-        print(loc)
+        loc = None
+        resp = self.find_file(filename)
+        if resp:
+            _, loc = resp
         if loc:
             if self.file_protocol.get_file(filename, loc):
                 self.files.append(filename)
-
-    #def load_file(self, filename):
-    #    return self.client_protocol.load_file(filename)
-
-    def check_dep(self):
-        try:
-            while True:
-                self.files = self.file_protocol.check_dep(self.files)
-                time.sleep(Constants.Heartbeat.TIMEOUT)
-        except KeyboardInterrupt:
-            sys.exit(1)
 
     def find_file(self, filename):
         on_machine = self.check_for_file(None, filename)
@@ -61,19 +50,15 @@ class ClientNode:
             return filename, self.get_src_addr()
         return self.file_protocol.check_cache_for_file(filename) or self.client_protocol.check_neighbor_files(filename)
 
-    def listen_to_ports(self):
-        self.client_protocol.listen_to_ports()
-
     def connect_to_network(self):
-        gatekeeper_suggestion = GatekeeperClient.connect_to_network(self.get_src_addr()) #http request to gatekeeper
+        gatekeeper_suggestion = GatekeeperClient.connect_to_network(self.get_src_addr())
         if not gatekeeper_suggestion:
             return
         potential_connections = [gatekeeper_suggestion]
         self.connect(potential_connections)
 
     def connect(self, potential_connections):
-        #num_clients = math.inf #answer from gatekeeper
-        if len(self.neighbors) >= 5:
+        if len(self.neighbors) >= Constants.Network.MAX_NEIGHBORS:
             return
         while len(potential_connections) > 0: #or TTL/round count?
             candidate = potential_connections[0]
@@ -81,7 +66,7 @@ class ClientNode:
                 potential_connections.append("|")
                 continue
             candidate_neighbors = self.client_protocol.get_neighbors(candidate)
-            if len(candidate_neighbors) < 5:
+            if len(candidate_neighbors) < Constants.Network.MAX_NEIGHBORS:
                 if candidate in self.neighbors:
                     break ##CHANGE TO CONTINUE MAYBE????
                 complete = self.add_neighbor(candidate)
@@ -93,7 +78,6 @@ class ClientNode:
     def add_neighbor(self, potential_neighbor):
         status, files = self.client_protocol.add_neighbor(potential_neighbor)
         if status != 0: #for membership, 0 is no, anything else is yes
-            #self.update_filelist(files)
             self.neighbors.append(tuple(potential_neighbor))
             return True
         return False
@@ -101,12 +85,12 @@ class ClientNode:
     def confirm_neighbor(self, potential_neighbor):
         #other checks to see if this node can accept another connection.
         #like net traffic? existing connections? available cpu/memory?
-        if tuple(potential_neighbor) not in self.neighbors and len(self.neighbors) <= self.connection_load * self.num_clients:
+        if tuple(potential_neighbor) not in self.neighbors and len(self.neighbors) <= Constants.Network.MAX_NEIGHBORS:
             self.neighbors.append(tuple(potential_neighbor))
             return 1, self.files
         return 0, None
 
-    def get_neighbors(self, payload):
+    def get_neighbors(self, _):
         return self.neighbors
 
     def get_neighbor_status(self, src, neighbor):
@@ -116,10 +100,18 @@ class ClientNode:
         else:
             return neighbor, "00-00-0000 00:00:00"
 
-    def update_filelist(self, files):
+    """def update_filelist(self, files):
         for file in files:
             if file not in self.files:
                 self.files.append(file)
+    """
+
+    #UNDERLYING SERVICES
+    def listen_to_udp_port(self):
+        self.client_protocol.listen_to_udp_port()
+
+    def listen_to_tcp_port(self):
+        self.client_protocol.listen_to_tcp_port()
 
     def heartbeat_filelist(self):
         self.client_protocol.heartbeat(Constants.Heartbeat.FILES, self.files, self.neighbors, Constants.Heartbeat.FILES_FREQUENCY)
@@ -144,7 +136,6 @@ class ClientNode:
                             self.connect(neighbor_of_neighbor_addrs)
                         to_delete.append(neighbor)
                         GatekeeperClient.notify_client_dead(neighbor)
-                        #send message to gatekeeper
                     elif TimeManager.get_time_diff_in_seconds(ref[neighbor].last_sent, ref[neighbor].last_ack) > Constants.Heartbeat.TIMEOUT:
                         ref[neighbor].status = CacheConstants.WARNING
                         self.client_protocol.get_neighbor_status(neighbor, neighbor_of_neighbor_addrs)
@@ -152,7 +143,14 @@ class ClientNode:
                     if addr in self.neighbors:
                         self.neighbors.remove(addr)
                     del ref[addr]
-                #print()
+        except KeyboardInterrupt:
+            sys.exit(1)
+
+    def update_file_dep(self):
+        try:
+            while True:
+                self.files = self.file_protocol.update_file_dep(self.files)
+                time.sleep(Constants.Heartbeat.TIMEOUT)
         except KeyboardInterrupt:
             sys.exit(1)
 
