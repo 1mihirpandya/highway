@@ -90,6 +90,10 @@ class NetworkClientCache():
         return id
 
     def cache_query(self, query, id, src, dst, waiting):
+        ids = list(self.query_ids.keys())
+        for id in ids:
+            if self.query_ids[id].status == 1:
+                del self.query_ids[id]
         self.query_ids[id] = QueryInfo(query, waiting, dst, src)
 
     def get_src_addr(self):
