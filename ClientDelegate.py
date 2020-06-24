@@ -1,6 +1,6 @@
 from ClientNode import *
 from NetworkClient import *
-import threading
+from Decorator import *
 
 class ClientDelegate:
     def __init__(self, client_node, network_client):
@@ -67,11 +67,13 @@ class ClientDelegate:
             resp["src"] = self.get_src_addr()
             self.network_client.send_udp(json.dumps(resp).encode(), query["src"])
         if query["type"] == Constants.Network.QUERY:
-            proc_th = threading.Thread(target=self.respond_udp, kwargs={"query":query}, daemon=True)
-            proc_th.start()
+            self.respond_udp(query)
+            #proc_th = threading.Thread(target=self.respond_udp, kwargs={"query":query}, daemon=True)
+            #proc_th.start()
         if query["type"] == Constants.Network.RESPONSE:
-            proc_th = threading.Thread(target=self.process_udp_response, kwargs={"query":query}, daemon=True)
-            proc_th.start()
+            self.process_udp_response(query)
+            #proc_th = threading.Thread(target=self.process_udp_response, kwargs={"query":query}, daemon=True)
+            #proc_th.start()
 
     def receive_tcp(self, query):
         #query["src"] = tuple(query["src"])
@@ -82,6 +84,7 @@ class ClientDelegate:
         response["payload"] = getattr(self.client_node, query["query"])(query["payload"])
         return json.dumps(response).encode()
 
+    @thread
     def respond_udp(self, query):
         resp_content = getattr(self.client_node, query["query"])(query["src"], query["payload"])
         query["ttl"] -= 1
@@ -106,6 +109,7 @@ class ClientDelegate:
                     query["dst"] = neighbor
                     self.network_client.send_udp(json.dumps(query).encode(), query["dst"])
 
+    @thread
     def process_udp_response(self, query):
         query_ids = self.network_cache.query_ids
         if query_ids[query["id"]].src != None: #udp w/ src means it was forwarded, and forwarded implies sync
@@ -143,7 +147,7 @@ class ClientDelegate:
 
     def completed(self, id):
         now = TimeManager.get_formatted_time()
-        if TimeManager.get_time_diff_in_seconds(now, self.network_cache.query_ids[id].time) > Constants.Network.TIMEOUT:
+        if TimeManager.get_time_diff_in_seconds(now, self.network_cache.query_ids[id].time) > Constants.Heartbeat.TIMEOUT:
             return True
         return self.network_cache.query_ids[id].status > 2
 
@@ -155,7 +159,7 @@ class ClientDelegate:
 
     #UNDERLYING SERVICES
     def listen_to_udp_port(self):
-        self.network_client.listen_to_udp_port()
+        self.network_client.attach_to_udp_port()
 
     def listen_to_tcp_port(self):
-        self.network_client.listen_to_tcp_port()
+        self.network_client.attach_to_tcp_port()

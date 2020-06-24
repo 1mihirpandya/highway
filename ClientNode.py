@@ -3,6 +3,7 @@ from NetworkClientCache import *
 from NetworkClient import *
 from FileProtocol import FileProtocol
 from ClientProtocol import ClientProtocol
+from Decorator import *
 import argparse
 import math
 import socket
@@ -106,62 +107,52 @@ class ClientNode:
     """
 
     #UNDERLYING SERVICES
+    @listener_thread
     def listen_to_udp_port(self):
         self.client_protocol.listen_to_udp_port()
 
+    @listener_thread
     def listen_to_tcp_port(self):
         self.client_protocol.listen_to_tcp_port()
 
+    @continuous_thread(Constants.Heartbeat.TIMEOUT)
+    def update_gatekeeper(self):
+        GatekeeperClient.update_gatekeeper(self.get_src_addr(), len(self.neighbors))
+
+    @continuous_thread(Constants.Heartbeat.FILES_FREQUENCY)
     def heartbeat_filelist(self):
-        try:
-            while True:
-                self.client_protocol.heartbeat(Constants.Heartbeat.FILES, self.files, self.neighbors)
-                time.sleep(Constants.Heartbeat.FILES_FREQUENCY)
-        except KeyboardInterrupt:
-            sys.exit(1)
+        self.client_protocol.heartbeat(Constants.Heartbeat.FILES, self.files, self.neighbors)
 
+    @continuous_thread(Constants.Heartbeat.NEIGHBORS_FREQUENCY)
     def heartbeat_neighbors(self):
-        try:
-            while True:
-                self.client_protocol.heartbeat(Constants.Heartbeat.NEIGHBORS, self.neighbors, self.neighbors)
-                time.sleep(Constants.Heartbeat.NEIGHBORS_FREQUENCY)
-        except KeyboardInterrupt:
-            sys.exit(1)
+        self.client_protocol.heartbeat(Constants.Heartbeat.NEIGHBORS, self.neighbors, self.neighbors)
 
+    @continuous_thread(Constants.Heartbeat.TIMEOUT)
     def failure_detector(self):
-        try:
-            while True:
-                time.sleep(Constants.Heartbeat.TIMEOUT)
-                to_delete = []
-                ref = self.network_cache.neighbors
-                keys = list(ref.keys())
-                for neighbor in keys:
-                    neighbor_of_neighbor_addrs = ref[neighbor].neighbors
-                    if not ref[neighbor].last_sent:
-                        continue
-                    if ref[neighbor].status == CacheConstants.WARNING and TimeManager.get_time_diff_in_seconds(ref[neighbor].last_sent, ref[neighbor].last_ack) > 2 * Constants.Heartbeat.TIMEOUT:
-                        #break off connection and connect to neighbor
-                        if neighbor_of_neighbor_addrs:
-                            self.connect(neighbor_of_neighbor_addrs)
-                        to_delete.append(neighbor)
-                        GatekeeperClient.notify_client_dead(neighbor)
-                    elif TimeManager.get_time_diff_in_seconds(ref[neighbor].last_sent, ref[neighbor].last_ack) > Constants.Heartbeat.TIMEOUT:
-                        ref[neighbor].status = CacheConstants.WARNING
-                        self.client_protocol.get_neighbor_status(neighbor, neighbor_of_neighbor_addrs)
-                for addr in to_delete:
-                    if addr in self.neighbors:
-                        self.neighbors.remove(addr)
-                    del ref[addr]
-        except KeyboardInterrupt:
-            sys.exit(1)
+        to_delete = []
+        ref = self.network_cache.neighbors
+        keys = list(ref.keys())
+        for neighbor in keys:
+            neighbor_of_neighbor_addrs = ref[neighbor].neighbors
+            if not ref[neighbor].last_sent:
+                continue
+            if ref[neighbor].status == CacheConstants.WARNING and TimeManager.get_time_diff_in_seconds(ref[neighbor].last_sent, ref[neighbor].last_ack) > 2 * Constants.Heartbeat.TIMEOUT:
+                #break off connection and connect to neighbor
+                if neighbor_of_neighbor_addrs:
+                    self.connect(neighbor_of_neighbor_addrs)
+                to_delete.append(neighbor)
+                GatekeeperClient.notify_client_dead(neighbor)
+            elif TimeManager.get_time_diff_in_seconds(ref[neighbor].last_sent, ref[neighbor].last_ack) > Constants.Heartbeat.TIMEOUT:
+                ref[neighbor].status = CacheConstants.WARNING
+                self.client_protocol.get_neighbor_status(neighbor, neighbor_of_neighbor_addrs)
+        for addr in to_delete:
+            if addr in self.neighbors:
+                self.neighbors.remove(addr)
+            del ref[addr]
 
+    @continuous_thread(Constants.Heartbeat.TIMEOUT)
     def update_file_dep(self):
-        try:
-            while True:
-                self.files = self.file_protocol.update_file_dep(self.files)
-                time.sleep(Constants.Heartbeat.TIMEOUT)
-        except KeyboardInterrupt:
-            sys.exit(1)
+        self.files = self.file_protocol.update_file_dep(self.files)
 
     def get_src_addr(self):
         return self.network_cache.get_src_addr()

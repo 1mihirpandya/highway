@@ -20,45 +20,43 @@ class NetworkClient:
     def cache_response(self, filename, addr):
         self.file_delegate.cache(filename, addr)
 
-    def listen_to_tcp_port(self):
+    def attach_to_tcp_port(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((self.ip, 0))
         self.network_cache.tcp_port = sock.getsockname()[1]
         sock.listen()
-        try:
-            while True:
-                conn, addr = sock.accept()
-                with conn:
-                    payload = self.recv_msg_tcp(conn)
-                    dict_payload = json.loads(payload)
-                    self.network_cache.update_cache(dict_payload["src"], last_received=TimeManager.get_formatted_time())
-                    if dict_payload["protocol"] == Constants.Network.STREAM:
-                        self.file_delegate.receive(dict_payload, conn)
-                    else:
-                        response = self.client_delegate.receive(dict_payload)
-                        self.send_msg_tcp(conn, response)
-                    self.network_cache.update_cache(dict_payload["src"], last_sent=TimeManager.get_formatted_time())
-        except KeyboardInterrupt:
-            sock.close()
-            sys.exit(1)
+        self.listen_to_tcp_port(sock)
 
-    def listen_to_udp_port(self):
+    @listener
+    def listen_to_tcp_port(self, sock):
+        conn, addr = sock.accept()
+        with conn:
+            payload = self.recv_msg_tcp(conn)
+            dict_payload = json.loads(payload)
+            self.network_cache.update_cache(dict_payload["src"], last_received=TimeManager.get_formatted_time())
+            if dict_payload["protocol"] == Constants.Network.STREAM:
+                self.file_delegate.receive(dict_payload, conn)
+            else:
+                response = self.client_delegate.receive(dict_payload)
+                self.send_msg_tcp(conn, response)
+            self.network_cache.update_cache(dict_payload["src"], last_sent=TimeManager.get_formatted_time())
+
+    def attach_to_udp_port(self):
         sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         sock.bind((self.ip, 0))
         self.network_cache.udp_port = sock.getsockname()[1]
-        try:
-            while True:
-                # TODO: Multi-sized packets
-                payload, address = sock.recvfrom(1024)
-                dict_payload = json.loads(payload)
-                src = tuple(dict_payload["src"])
-                #self.network_cache.update_cache(src, last_received=TimeManager.get_formatted_time())
-                if dict_payload["type"] == Constants.Network.ACK:
-                    self.network_cache.update_cache(src, last_ack=TimeManager.get_formatted_time())
-                self.client_delegate.receive(dict_payload)
-        except KeyboardInterrupt:
-            sock.close()
-            sys.exit(1)
+        self.listen_to_udp_port(sock)
+
+    @listener
+    def listen_to_udp_port(self, sock):
+        # TODO: Multi-sized packets
+        payload, address = sock.recvfrom(1024)
+        dict_payload = json.loads(payload)
+        src = tuple(dict_payload["src"])
+        #self.network_cache.update_cache(src, last_received=TimeManager.get_formatted_time())
+        if dict_payload["type"] == Constants.Network.ACK:
+            self.network_cache.update_cache(src, last_ack=TimeManager.get_formatted_time())
+        self.client_delegate.receive(dict_payload)
 
     def send_udp(self, query, dst):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -66,11 +64,7 @@ class NetworkClient:
         self.network_cache.update_cache(dst, last_sent=TimeManager.get_formatted_time())
 
     def send_rpc(self, query, dst):
-        #query["id"] = self.network_cache.get_query_id()
-        #json_query = json.dumps(query)
-        #network_cache.update_cache(neighbor, last_sent=TimeManager.get_formatted_time())
         payload = self.send_recv_tcp_using_socket(query, dst)
-        #self.network_cache.query_ids[query["id"]] = None
         return json.loads(payload)
 
     def send_recv_tcp_using_socket(self, query, dst):
