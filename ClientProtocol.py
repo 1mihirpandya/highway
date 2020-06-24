@@ -47,16 +47,11 @@ class ClientProtocol:
     def listen_to_tcp_port(self):
         self.client_delegate.listen_to_tcp_port()
 
-    def heartbeat(self, name, payload, neighbors, frequency):
-        try:
-            while True:
-                msg = JSONHeartbeatUDPTemplate.template
-                msg["query"] = name
-                msg["payload"] = list(payload)
-                self.client_delegate.send(msg, neighbors)
-                time.sleep(frequency)
-        except KeyboardInterrupt:
-            sys.exit(1)
+    def heartbeat(self, name, payload, neighbors):
+        msg = JSONHeartbeatUDPTemplate.template
+        msg["query"] = name
+        msg["payload"] = list(payload)
+        self.client_delegate.send(msg, neighbors)
 
     def get_neighbor_status(self, neighbor, neighbor_of_neighbor_addrs):
         query = JSONQueryUDPTemplate.template

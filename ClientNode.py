@@ -13,8 +13,6 @@ class ClientNode:
     def __init__(self):
         self.neighbors = []
         self.files = []
-        self.connection_load = 0.3
-        self.num_clients = math.inf
         hostname = socket.gethostname()
         self.ip = socket.gethostbyname(hostname)
         self.network_cache = NetworkClientCache(self.ip)
@@ -71,8 +69,9 @@ class ClientNode:
                     break ##CHANGE TO CONTINUE MAYBE????
                 complete = self.add_neighbor(candidate)
                 if complete:
-                    break
+                    return
             potential_connections.extend(candidate)
+        self.connect_to_network()
         #no open positions, an issue for another time...
 
     def add_neighbor(self, potential_neighbor):
@@ -114,10 +113,20 @@ class ClientNode:
         self.client_protocol.listen_to_tcp_port()
 
     def heartbeat_filelist(self):
-        self.client_protocol.heartbeat(Constants.Heartbeat.FILES, self.files, self.neighbors, Constants.Heartbeat.FILES_FREQUENCY)
+        try:
+            while True:
+                self.client_protocol.heartbeat(Constants.Heartbeat.FILES, self.files, self.neighbors)
+                time.sleep(Constants.Heartbeat.FILES_FREQUENCY)
+        except KeyboardInterrupt:
+            sys.exit(1)
 
     def heartbeat_neighbors(self):
-        self.client_protocol.heartbeat(Constants.Heartbeat.NEIGHBORS, self.neighbors, self.neighbors, Constants.Heartbeat.NEIGHBORS_FREQUENCY)
+        try:
+            while True:
+                self.client_protocol.heartbeat(Constants.Heartbeat.NEIGHBORS, self.neighbors, self.neighbors)
+                time.sleep(Constants.Heartbeat.NEIGHBORS_FREQUENCY)
+        except KeyboardInterrupt:
+            sys.exit(1)
 
     def failure_detector(self):
         try:

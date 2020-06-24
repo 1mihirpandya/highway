@@ -32,6 +32,7 @@ class QueryInfo():
         self.payload = None
         self.waiting = waiting
         self.status = 0
+        self.time = TimeManager.get_formatted_time()
 
     def printable(self):
         return {
@@ -91,8 +92,11 @@ class NetworkClientCache():
 
     def cache_query(self, query, id, src, dst, waiting):
         ids = list(self.query_ids.keys())
+        now = TimeManager.get_formatted_time()
         for id in ids:
             if self.query_ids[id].status == 1:
+                del self.query_ids[id]
+            elif TimeManager.get_time_diff_in_seconds(now, self.query_ids[id].time) > Constants.Network.TIMEOUT:
                 del self.query_ids[id]
         self.query_ids[id] = QueryInfo(query, waiting, dst, src)
 

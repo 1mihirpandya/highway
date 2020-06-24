@@ -108,8 +108,7 @@ class ClientDelegate:
 
     def process_udp_response(self, query):
         query_ids = self.network_cache.query_ids
-        neighbors = self.network_cache.neighbors
-        if query_ids[query["id"]].src != None:
+        if query_ids[query["id"]].src != None: #udp w/ src means it was forwarded, and forwarded implies sync
             if query_ids[query["id"]].status == 1:
                 return
             query["src"] = self.get_src_addr()
@@ -118,11 +117,12 @@ class ClientDelegate:
             if query["payload"]:
                 self.network_client.send_udp(json.dumps(query).encode(), query["dst"])
                 self.network_client.cache_response(*query["payload"])
-                self.mark_sync_query_as_completed(query["id"])
+                self.mark_query_as_completed(query["id"])
             elif query_ids[query["id"]].waiting <= 0:
                 self.network_client.send_udp(json.dumps(query).encode(), query["dst"])
-                self.mark_sync_query_as_completed(query["id"])
+                self.mark_query_as_completed(query["id"])
         elif query_ids[query["id"]].query == "get_neighbor_status":
+            neighbors = self.network_cache.neighbors
             if TimeManager.get_time_diff_in_seconds(neighbors[query["payload"]["neighbor"]].last_sent, query["payload"]["last_ack"]) < Constants.Heartbeat.TIMEOUT:
                 neighbors[neighbor].status = CacheConstants.OKAY
             self.mark_query_as_completed(query["id"])
@@ -131,10 +131,8 @@ class ClientDelegate:
                 return
             query_ids[query["id"]].payload = query["payload"]
             self.mark_query_as_completed(query["id"])
-            #print(query_ids[query["id"]].payload)
-            #print(self.network_cache.query_ids[query["id"]].status)
 
-    def mark_query_as_completed(self, id):
+    def mark_query_as_completed(self, id): #THIS METHOD IS NO LONGER NECESSARY
         self.network_cache.query_ids[id].status += 1
 
     def mark_sync_query_as_completed(self, id):
@@ -144,6 +142,9 @@ class ClientDelegate:
         self.network_cache.query_ids[id].status = 2
 
     def completed(self, id):
+        now = TimeManager.get_formatted_time()
+        if TimeManager.get_time_diff_in_seconds(now, self.network_cache.query_ids[id].time) > Constants.Network.TIMEOUT:
+            return True
         return self.network_cache.query_ids[id].status > 2
 
     def get_resp(self, id):
