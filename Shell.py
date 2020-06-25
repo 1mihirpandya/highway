@@ -41,6 +41,11 @@ def delegate(input):
         client.connect_to_network()
         print("Current Neighbors:", client.neighbors)
         client.update_gatekeeper()
+    elif input.startswith("connect"):
+        client.connect_to_network()
+    elif input.startswith("notn "):
+        neighbor = int(input[len("notn "):])
+        client.notify_not_neighbor(client.neighbors[neighbor])
     elif input.startswith("printfiles"):
         print("Current Files:", client.files)
     elif input.startswith("printneighbors"):
@@ -50,15 +55,17 @@ def delegate(input):
         file_cache = client.get_file_cache()
         for file in file_cache.files:
             print(file, file_cache.files[file])
+        print()
         print("Cached Files:")
         for file in file_cache.cached_files:
             print(file, file_cache.cached_files[file].addr)
         print()
-        print("Query Ids: ")
+        print("Query Ids:")
         for query_id in client.network_cache.query_ids:
             print("ID: {}".format(query_id))
             print(client.network_cache.query_ids[query_id].printable())
         print()
+        print("Neighbors:")
         for neighbor in client.network_cache.neighbors:
             print("Neighbor: {}".format(neighbor))
             print(client.network_cache.neighbors[neighbor].printable())

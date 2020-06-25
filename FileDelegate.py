@@ -16,13 +16,16 @@ class FileDelegate:
     def stream_to_file(self, filename, query, dst):
         query["src"] = self.network_client.get_src_addr()
         query["id"] = self.network_client.get_query_id()
-        with open(os.path.join(self.file_cache.root, filename), 'wb') as f:
-            for packet in self.network_client.stream(json.dumps(query).encode(), dst):
-                if packet == None:
-                    self.mark_sync_query_as_completed(query["id"])
-                    return False
-                f.write(packet)
-            self.file_cache.add(filename)
+        f = open(os.path.join(self.file_cache.root, filename), 'wb')
+        for packet in self.network_client.stream(json.dumps(query).encode(), dst):
+            if packet == None:
+                f.close()
+                os.remove(os.path.join(self.file_cache.root, filename))
+                self.mark_sync_query_as_completed(query["id"])
+                return False
+            f.write(packet)
+        f.close()
+        self.file_cache.add(filename)
         self.mark_sync_query_as_completed(query["id"])
         return True
 
@@ -70,6 +73,7 @@ class FileDelegate:
         if filename in cached_files:
             return self.file_cache.cached_files[filename].addr
 
+    @thread_safe
     def update_file_cache(self):
         cached_files = list(self.file_cache.cached_files.keys())
         for file in cached_files:
@@ -82,7 +86,6 @@ class FileDelegate:
 
     ####################
     #DEPRECATED
-
     def get_folder_hierarchy(self, foldername):
         files = []
         for (root, dirs, fs) in os.walk(foldername):

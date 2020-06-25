@@ -35,7 +35,7 @@ class FileProtocol():
     def check_cache_for_file(self, filename):
         res = self.file_delegate.check_cache(filename)
         if res:
-            return filename, tuple(res)
+            return tuple(res)
         return res
 
     #UNDERLYING SERVICES

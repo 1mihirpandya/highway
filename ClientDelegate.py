@@ -23,10 +23,10 @@ class ClientDelegate:
         return None
 
     def cache_neighbor_files(self, src, files):
-        self.network_cache.update_cache(src, files=files)
+        self.network_cache.update_cache(self.get_neighbors(), src, files=files)
 
     def cache_neighbor_neighbors(self, src, neighbors):
-        self.network_cache.update_cache(src, neighbors_of_neighbors=neighbors)
+        self.network_cache.update_cache(self.get_neighbors(), src, neighbors_of_neighbors=neighbors)
 
     def send(self, query, dsts, udpsync=False):
         query["src"] = self.get_src_addr()
@@ -61,23 +61,19 @@ class ClientDelegate:
 
     def receive_udp(self, query):
         if query["type"] == Constants.Network.HEARTBEAT:
-            #print(query)
-            getattr(self, query["query"])(query["src"], query["payload"])
-            resp = JSONHeartbeatAckTemplate.template
-            resp["src"] = self.get_src_addr()
-            self.network_client.send_udp(json.dumps(resp).encode(), query["src"])
+            if query["src"] not in self.get_neighbors():
+                self.client_node.notify_not_neighbor(query["src"])
+            else:
+                getattr(self, query["query"])(query["src"], query["payload"])
+                resp = JSONHeartbeatAckTemplate.template
+                resp["src"] = self.get_src_addr()
+                self.network_client.send_udp(json.dumps(resp).encode(), query["src"])
         if query["type"] == Constants.Network.QUERY:
             self.respond_udp(query)
-            #proc_th = threading.Thread(target=self.respond_udp, kwargs={"query":query}, daemon=True)
-            #proc_th.start()
         if query["type"] == Constants.Network.RESPONSE:
             self.process_udp_response(query)
-            #proc_th = threading.Thread(target=self.process_udp_response, kwargs={"query":query}, daemon=True)
-            #proc_th.start()
 
     def receive_tcp(self, query):
-        #query["src"] = tuple(query["src"])
-        #query["dst"] = tuple(query["dst"])
         response = JSONQueryRPCTemplate.template
         response["src"] = query["dst"]
         response["dst"] = query["src"]
@@ -102,8 +98,6 @@ class ClientDelegate:
         if not self.network_cache.has_id(query["id"]):
             query["src"] = self.get_src_addr()
             self.network_cache.cache_query(None, query["id"], src, None, len(self.client_node.neighbors)-1)
-            #print(self.network_cache.query_ids[query["id"]].src)
-            #print(self.network_cache.query_ids[query["id"]].waiting)
             for neighbor in self.client_node.neighbors:
                 if neighbor != src:
                     query["dst"] = neighbor

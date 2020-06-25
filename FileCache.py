@@ -1,4 +1,5 @@
 import os
+from Decorator import *
 
 class CachedFileInfo:
     def __init__(self, addr):
@@ -40,10 +41,12 @@ class FileCache:
             return True
         return False
 
+    @thread_safe
     def prune(self, file, path):
         if file in self.files:
             self.files[file].remove(path)
 
+    @thread_safe
     def remove_file(self, file):
         del self.files[file]
 

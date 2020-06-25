@@ -29,13 +29,13 @@ class ClientNode:
         return self.file_protocol.get_file_cache()
 
     def get_file(self, filename):
-        loc = None
-        resp = self.find_file(filename)
-        if resp:
-            _, loc = resp
+        loc = self.find_file(filename)
         if loc:
             if self.file_protocol.get_file(filename, loc):
                 self.files.append(filename)
+                return True
+            else:
+                return False
 
     def find_file(self, filename):
         on_machine = self.check_for_file(None, filename)
@@ -46,7 +46,7 @@ class ClientNode:
 
     def check_for_file(self, src, filename):
         if filename in self.files:
-            return filename, self.get_src_addr()
+            return self.get_src_addr()
         return self.file_protocol.check_cache_for_file(filename) or self.client_protocol.check_neighbor_files(filename)
 
     def connect_to_network(self):
@@ -76,7 +76,7 @@ class ClientNode:
         #no open positions, an issue for another time...
 
     def add_neighbor(self, potential_neighbor):
-        status, files = self.client_protocol.add_neighbor(potential_neighbor)
+        status = self.client_protocol.add_neighbor(potential_neighbor)
         if status != 0: #for membership, 0 is no, anything else is yes
             self.neighbors.append(tuple(potential_neighbor))
             return True
@@ -87,8 +87,8 @@ class ClientNode:
         #like net traffic? existing connections? available cpu/memory?
         if tuple(potential_neighbor) not in self.neighbors and len(self.neighbors) <= Constants.Network.MAX_NEIGHBORS:
             self.neighbors.append(tuple(potential_neighbor))
-            return 1, self.files
-        return 0, None
+            return 1
+        return 0
 
     def get_neighbors(self, _):
         return self.neighbors
@@ -100,11 +100,18 @@ class ClientNode:
         else:
             return neighbor, "00-00-0000 00:00:00"
 
-    """def update_filelist(self, files):
-        for file in files:
-            if file not in self.files:
-                self.files.append(file)
-    """
+    def notify_not_neighbor(self, src):
+        src = tuple(src)
+        self.client_protocol.notify_not_neighbor(src)
+        if src in self.neighbors:
+            self.neighbors.remove(src)
+        self.network_cache.remove_neighbor(src)
+
+    def remove_neighbor(self, _, neighbor):
+        neighbor = tuple(neighbor)
+        if neighbor in self.neighbors:
+            self.neighbors.remove(neighbor)
+        self.network_cache.remove_neighbor(neighbor)
 
     #UNDERLYING SERVICES
     @listener_thread
@@ -143,12 +150,14 @@ class ClientNode:
                 to_delete.append(neighbor)
                 GatekeeperClient.notify_client_dead(neighbor)
             elif TimeManager.get_time_diff_in_seconds(ref[neighbor].last_sent, ref[neighbor].last_ack) > Constants.Heartbeat.TIMEOUT:
+                print(TimeManager.get_time_diff_in_seconds(ref[neighbor].last_sent, ref[neighbor].last_ack))
+                print(client.network_cache.neighbors[neighbor].printable())
                 ref[neighbor].status = CacheConstants.WARNING
                 self.client_protocol.get_neighbor_status(neighbor, neighbor_of_neighbor_addrs)
         for addr in to_delete:
             if addr in self.neighbors:
                 self.neighbors.remove(addr)
-            del ref[addr]
+            self.network_cache.remove_neighbor(addr)
 
     @continuous_thread(Constants.Heartbeat.TIMEOUT)
     def update_file_dep(self):

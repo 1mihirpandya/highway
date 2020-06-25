@@ -22,7 +22,7 @@ class ClientProtocol:
     def check_neighbor_files(self, filename):
         result = self.client_delegate.find_neighbor_file_location(filename)
         if result:
-            return filename, tuple(result)
+            return tuple(result)
         return result
 
     def ask_neighbors_for_file(self, filename, neighbors):
@@ -34,13 +34,17 @@ class ClientProtocol:
         while not self.client_delegate.completed(id):
             time.sleep(0.5)
         result = self.client_delegate.get_resp(id)
-        #print(id, result)
         self.client_delegate.mark_sync_query_as_completed(id)
-        if result: return tuple(result[1])
+        if result: return tuple(result)
         return None
 
-    #UNDERLYING SERVICES
+    def notify_not_neighbor(self, addr):
+        query = JSONQueryUDPTemplate.template
+        query["query"] = "remove_neighbor"
+        query["payload"] = self.get_src_addr()
+        self.client_delegate.send(query, [addr])
 
+    #UNDERLYING SERVICES
     def listen_to_udp_port(self):
         self.client_delegate.listen_to_udp_port()
 

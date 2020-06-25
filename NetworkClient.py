@@ -33,13 +33,13 @@ class NetworkClient:
         with conn:
             payload = self.recv_msg_tcp(conn)
             dict_payload = json.loads(payload)
-            self.network_cache.update_cache(dict_payload["src"], last_received=TimeManager.get_formatted_time())
+            self.network_cache.update_cache(self.client_delegate.get_neighbors(), dict_payload["src"], last_received=TimeManager.get_formatted_time())
             if dict_payload["protocol"] == Constants.Network.STREAM:
                 self.file_delegate.receive(dict_payload, conn)
             else:
                 response = self.client_delegate.receive(dict_payload)
                 self.send_msg_tcp(conn, response)
-            self.network_cache.update_cache(dict_payload["src"], last_sent=TimeManager.get_formatted_time())
+            self.network_cache.update_cache(self.client_delegate.get_neighbors(), dict_payload["src"], last_sent=TimeManager.get_formatted_time())
 
     def attach_to_udp_port(self):
         sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
@@ -55,13 +55,13 @@ class NetworkClient:
         src = tuple(dict_payload["src"])
         #self.network_cache.update_cache(src, last_received=TimeManager.get_formatted_time())
         if dict_payload["type"] == Constants.Network.ACK:
-            self.network_cache.update_cache(src, last_ack=TimeManager.get_formatted_time())
+            self.network_cache.update_cache(self.client_delegate.get_neighbors(), src, last_ack=TimeManager.get_formatted_time())
         self.client_delegate.receive(dict_payload)
 
     def send_udp(self, query, dst):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.sendto(query, self.get_udp_addr(dst))
-        self.network_cache.update_cache(dst, last_sent=TimeManager.get_formatted_time())
+        self.network_cache.update_cache(self.client_delegate.get_neighbors(), dst, last_sent=TimeManager.get_formatted_time())
 
     def send_rpc(self, query, dst):
         payload = self.send_recv_tcp_using_socket(query, dst)
