@@ -150,8 +150,8 @@ class ClientNode:
                 to_delete.append(neighbor)
                 GatekeeperClient.notify_client_dead(neighbor)
             elif TimeManager.get_time_diff_in_seconds(ref[neighbor].last_sent, ref[neighbor].last_ack) > Constants.Heartbeat.TIMEOUT:
-                print(TimeManager.get_time_diff_in_seconds(ref[neighbor].last_sent, ref[neighbor].last_ack))
-                print(client.network_cache.neighbors[neighbor].printable())
+                #print(TimeManager.get_time_diff_in_seconds(ref[neighbor].last_sent, ref[neighbor].last_ack))
+                #print(client.network_cache.neighbors[neighbor].printable())
                 ref[neighbor].status = CacheConstants.WARNING
                 self.client_protocol.get_neighbor_status(neighbor, neighbor_of_neighbor_addrs)
         for addr in to_delete:

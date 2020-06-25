@@ -1,6 +1,7 @@
 from enum import Enum
 import time
 import re
+import uuid
 import datetime
 from Constants import *
 import random
@@ -87,9 +88,9 @@ class NetworkClientCache():
         return False
 
     def get_query_id(self, query="", waiting=0):
-        id = random.randint(0,10000)
+        id = uuid.uuid1().int
         while id in self.query_ids:
-            id = random.randint(0,10000)
+            id = uuid.uuid1().int
         self.query_ids[id] = QueryInfo(query, waiting)
         return id
 

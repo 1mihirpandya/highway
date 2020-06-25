@@ -127,8 +127,12 @@ class ClientDelegate:
         else:
             if query_ids[query["id"]].status == 1 or query_ids[query["id"]].payload:
                 return
-            query_ids[query["id"]].payload = query["payload"]
-            self.mark_query_as_completed(query["id"])
+            query_ids[query["id"]].waiting -= 1
+            if query["payload"]:
+                query_ids[query["id"]].payload = query["payload"]
+                self.mark_query_as_completed(query["id"])
+            elif query_ids[query["id"]].waiting <= 0:
+                self.mark_query_as_completed(query["id"])
 
     def mark_query_as_completed(self, id): #THIS METHOD IS NO LONGER NECESSARY
         self.network_cache.query_ids[id].status += 1
