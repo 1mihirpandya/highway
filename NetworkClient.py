@@ -63,6 +63,7 @@ class NetworkClient:
         sock.sendto(query, self.get_udp_addr(dst))
         self.network_cache.update_cache(self.client_delegate.get_neighbors(), dst, last_sent=TimeManager.get_formatted_time())
 
+    @thread_safe
     def send_rpc(self, query, dst):
         payload = self.send_recv_tcp_using_socket(query, dst)
         return json.loads(payload)

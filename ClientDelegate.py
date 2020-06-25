@@ -44,7 +44,9 @@ class ClientDelegate:
         elif query["protocol"] == Constants.Network.TCP:
             response = self.network_client.send_rpc(json.dumps(query).encode(), dsts)
             self.mark_sync_query_as_completed(query["id"])
-            if type(response["payload"]) == dict:
+            if response == None:
+                return None
+            elif type(response["payload"]) == dict:
                 return [val for val in response["payload"].values()]
             else:
                 return response["payload"]

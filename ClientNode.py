@@ -55,16 +55,23 @@ class ClientNode:
             return
         potential_connections = [gatekeeper_suggestion]
         self.connect(potential_connections)
+        if len(self.neighbors) == 0:
+            GatekeeperClient.notify_client_dead(self.get_src_addr())
+            self.connect_to_network()
 
     def connect(self, potential_connections):
         if len(self.neighbors) >= Constants.Network.MAX_NEIGHBORS:
             return
         while len(potential_connections) > 0: #or TTL/round count?
             candidate = potential_connections[0]
+            potential_connections = potential_connections[1:]
             if candidate == "|":
                 potential_connections.append("|")
                 continue
             candidate_neighbors = self.client_protocol.get_neighbors(candidate)
+            if candidate_neighbors == None:
+                GatekeeperClient.notify_client_dead(candidate)
+                continue
             if len(candidate_neighbors) < Constants.Network.MAX_NEIGHBORS:
                 if candidate in self.neighbors:
                     break ##CHANGE TO CONTINUE MAYBE????
@@ -72,14 +79,15 @@ class ClientNode:
                 if complete:
                     return
             potential_connections.extend(candidate)
-        self.connect_to_network()
         #no open positions, an issue for another time...
 
     def add_neighbor(self, potential_neighbor):
         status = self.client_protocol.add_neighbor(potential_neighbor)
-        if status != 0: #for membership, 0 is no, anything else is yes
+        if status == 1: #for membership, 0 is no, 1 is yes
             self.neighbors.append(tuple(potential_neighbor))
             return True
+        if status == None:
+            GatekeeperClient.notify_client_dead(potential_neighbor)
         return False
 
     def confirm_neighbor(self, potential_neighbor):
