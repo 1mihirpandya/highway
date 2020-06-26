@@ -1,9 +1,11 @@
 from enum import Enum
 import time
 import re
+import uuid
 import datetime
 from Constants import *
 import random
+from Decorator import *
 
 class NeighborInfo():
     def __init__(self):
@@ -18,19 +20,21 @@ class NeighborInfo():
     def printable(self):
         return {
         "neighbors":self.neighbors,
-        "files":self.neighbors,
+        "files":self.files,
         "last_sent":self.last_sent,
         "last_ack":self.last_ack,
         "last_received":self.last_received
         }
 
 class QueryInfo():
-    def __init__(self, query, dst=None, src=None):
+    def __init__(self, query, waiting, dst=None, src=None):
         self.query = query
         self.dst = dst
         self.src = src
         self.payload = None
+        self.waiting = waiting
         self.status = 0
+        self.time = TimeManager.get_formatted_time()
 
     def printable(self):
         return {
@@ -38,7 +42,8 @@ class QueryInfo():
         "dst":self.dst,
         "src":self.src,
         "payload":self.payload,
-        "status":self.status
+        "status":self.status,
+        "waiting":self.waiting
         }
 
 class NetworkClientCache():
@@ -50,14 +55,15 @@ class NetworkClientCache():
         self.tcp_port = None
         self.udp_port = None
 
-    def update_cache(self, neighbor, neighbors_of_neighbors=[], files=[], last_sent=None, last_ack=None, last_received=None):
+    @thread_safe
+    def update_cache(self, node_neighbors, neighbor, neighbors_of_neighbors=[], files=[], last_sent=None, last_ack=None, last_received=None):
         neighbor = tuple(neighbor)
+        if neighbor not in node_neighbors:
+            return
         if neighbor not in self.neighbors:
-            #print("update_cache", "adding neighbor")
             self.neighbors[neighbor] = NeighborInfo()
         ref = self.neighbors[neighbor]
         if ref:
-            #print("update_cache", neighbor, ref)
             if last_sent != None:
                 ref.last_sent = last_sent
             if last_ack != None:
@@ -81,15 +87,31 @@ class NetworkClientCache():
             return True
         return False
 
-    def get_query_id(self, query=""):
-        id = random.randint(0,10000)
+    def get_query_id(self, query="", waiting=0):
+        id = uuid.uuid1().int
         while id in self.query_ids:
-            id = random.randint(0,10000)
-        self.query_ids[id] = QueryInfo(query)
+            id = uuid.uuid1().int
+        self.query_ids[id] = QueryInfo(query, waiting)
         return id
 
-    def cache_query(self, query, id, src, dst):
-        self.query_ids[id] = QueryInfo(query, dst, src)
+    def cache_query(self, query, id, src, dst, waiting):
+        ids = list(self.query_ids.keys())
+        for tid in ids:
+            self.remove_query(tid)
+        self.query_ids[id] = QueryInfo(query, waiting, dst, src)
+
+    @thread_safe
+    def remove_query(self, id):
+        now = TimeManager.get_formatted_time()
+        if self.query_ids[id].status == 1:
+            del self.query_ids[id]
+        elif TimeManager.get_time_diff_in_seconds(now, self.query_ids[id].time) > Constants.Network.TIMEOUT:
+            del self.query_ids[id]
+
+    @thread_safe
+    def remove_neighbor(self, neighbor):
+        if neighbor in self.neighbors:
+            del self.neighbors[neighbor]
 
     def get_src_addr(self):
         return (self.ip, self.tcp_port, self.udp_port)
@@ -113,7 +135,6 @@ class TimeManager:
 
     #time2 - time1
     def get_time_diff_in_seconds(time1, time2):
-        #print(time1, time2)
         if not (time1 and time2):
             return 0
         formatted_time1 = [int(x) for x in re.split("[-: ]", time1)]
