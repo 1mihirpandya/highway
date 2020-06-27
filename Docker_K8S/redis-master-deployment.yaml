@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-master
+  labels:
+    app: redis-master
+spec:
+  selector:
+    matchLabels:
+      app: redis-master
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: redis-master
+    spec:
+      containers:
+      - image: redis
+        name: redis-master
+        ports:
+        - containerPort: 6379
+        imagePullPolicy: Never
+        command: ["redis-server"]
+      restartPolicy: OnFailure

@@ -3,7 +3,7 @@ import json
 from Constants import *
 
 class GatekeeperClient:
-    URL = "http://192.168.1.95:5000"
+    URL = ""#"http://172.17.0.2:5000"
     #URL = "http://127.0.0.1:8080"
     CONNECT = "/connect"
     DELETE = "/delete"

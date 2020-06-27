@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatekeeper
+  labels:
+    app: gatekeeper
+spec:
+  selector:
+    matchLabels:
+      app: gatekeeper
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: gatekeeper
+    spec:
+      containers:
+      - image: gatekeeper
+        name: gatekeeper
+        ports:
+        - containerPort: 5000
+        imagePullPolicy: Never
