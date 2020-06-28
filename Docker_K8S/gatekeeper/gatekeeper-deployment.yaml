@@ -17,6 +17,9 @@ spec:
       containers:
       - image: gatekeeper
         name: gatekeeper
+        env:
+        - name: GET_HOSTS_FROM
+          value: "dns"
         ports:
         - containerPort: 5000
         imagePullPolicy: Never
