@@ -81,9 +81,9 @@ if __name__ == "__main__":
     global client
     client = ClientNode()
     try:
-        resp = input("FastTrakk >> ")
+        resp = input("Highway >> ")
         while resp != "exit":
             delegate(resp)
-            resp = input("FastTrakk >> ")
+            resp = input("Highway >> ")
     except KeyboardInterrupt:
         sys.exit(1)
