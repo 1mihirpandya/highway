@@ -1,0 +1,15 @@
+version: "3"
+services:
+  redis-master:
+    build: .
+    command: redis-server --bind 0.0.0.0 --protected-mode no
+    ports:
+      - "6379:6379"
+
+  redis-slave:
+    build: .
+    command: redis-server --bind 0.0.0.0 --protected-mode no --slaveof redis-master 6379
+    ports:
+      - "6378:6379"
+    depends_on:
+        - redis-master
