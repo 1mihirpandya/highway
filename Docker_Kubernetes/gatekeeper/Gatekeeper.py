@@ -78,7 +78,7 @@ def delete():
 if __name__ == "__main__":
     global write, read
     redis_write = os.getenv('REDIS_MASTER_SERVICE_HOST')
-    redis_read = os.getenv('REDIS_SLAVE_SERVICE_HOST')
+    redis_read = os.getenv('REDIS_FOLLOWER_SERVICE_HOST')
     write = redis.StrictRedis(host=redis_write, port=redis_port)
     read = redis.StrictRedis(host=redis_read, port=redis_port)
     write.set_response_callback("GET", int)

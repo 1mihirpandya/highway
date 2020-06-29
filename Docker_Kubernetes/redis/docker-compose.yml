@@ -7,7 +7,7 @@ services:
     ports:
       - "6379"
 
-  redis-slave:
+  redis-follower:
     image: gcr.io/google_samples/gb-redisslave:v3
     ports:
       - "6379"
