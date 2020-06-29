@@ -80,6 +80,7 @@ Majority of the client architecture was built to be delegate-oriented, so specif
 ## Starting Highway:
 
 The first thing that needs to be started is Gatekeeper:
+
 	kubectl apply -f Docker_Kubernetes/redis/redis-master-service.yaml
 	kubectl apply -f Docker_Kubernetes/redis/redis-follower-service.yaml
 	kubectl apply -f Docker_Kubernetes/gatekeeper/gatekeeper-service.yaml
@@ -88,9 +89,8 @@ The first thing that needs to be started is Gatekeeper:
 	kubectl apply -f Docker_Kubernetes/redis/redis-follower-deployment.yaml
 	kubectl apply -f Docker_Kubernetes/gatekeeper/gatekeeper-deployment.yaml
 
-Remember to apply the services first, as Gatekeeper looks for env variables set by the reds services. The Redis-related commands above use the Google/Docker images for Redis. My Dockerfile/deployments/services can be found in the custom-redis folder.
+Remember to apply the services first, as Gatekeeper looks for env variables set by the reds services. The Redis-related commands above use the Google/Docker images for Redis. My Dockerfile/deployments/services can be found in the redis-custom folder.
 
-If using minikube, the load balancer service used for Gatekeeper will not give a public external IP address. In this case, perform the following command to get the external IP:
-	minikube service gatekeeper --url
+If using minikube, the load balancer service used for Gatekeeper will not give a public external IP address. In this case, perform the following command to get the external IP: `minikube service gatekeeper --url`
 
-The IP should be put in the GatekeeperClient file. To start the Highway client, simply run python Shell.py in the main directory. The system requires python3. To connect to the network, enter start <root_folder>, where the <root_folder> has the files that you’re willing to have shared/downloaded. Other commands can be found in Shell.py
+The IP should be put in the `GatekeeperClient.py` file. To start the Highway client, simply run `python Shell.py` in the main directory. The system requires python3. To connect to the network, enter `start <root_folder>`, where the <root_folder> has the files that you’re willing to have shared/downloaded. Other commands can be found in Shell.py.
