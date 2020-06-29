@@ -6,14 +6,14 @@ metadata:
     kompose.version: 1.21.0 ()
   creationTimestamp: null
   labels:
-    io.kompose.service: redis-slave
-  name: redis-slave
+    io.kompose.service: redis-leader
+  name: redis-leader
 spec:
   ports:
-  - name: "6378"
-    port: 6378
+  - name: "6379"
+    port: 6379
     targetPort: 6379
   selector:
-    io.kompose.service: redis-slave
+    io.kompose.service: redis-leader
 status:
   loadBalancer: {}
